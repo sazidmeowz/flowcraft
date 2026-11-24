@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlowCraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+/* VOICE: bright, cosy blocky survival world - a game you want to open every morning
+   IDEA: your studies are a living voxel world: quests, ore, chests that oxidise, a copper helper that sorts your courses
+   PICTURE: day/night sky over a biome, textured plank/copper/deepslate panels, HUD with hearts + XP + hotbar
+   COLOUR/TYPE: biome-driven (Dappled Forest autumn by default), lapis/redstone/amethyst/gold accents; Pixelify Sans + Press Start 2P
+   LAYOUT: grass-block header, one working view, HUD hotbar on a grass strip at the bottom */
+:root{--paper:#fff6e6;--ink:#2e1d10;--acc:#e8651e;--sky1:#7ec3ff;--sky2:#cfe9ff;--hud:#fff}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:90px}
+body{margin:0;font:18px/1.4 'Pixelify Sans',system-ui,sans-serif;color:var(--ink);min-height:100vh;padding-bottom:200px;overflow-x:clip;background:#000}
+#sky{position:fixed;inset:0;z-index:-3;background:linear-gradient(var(--sky1),var(--sky2));transition:background 2s}
+#sun{position:fixed;width:64px;height:64px;z-index:-2;image-rendering:pixelated;transition:all 2s}
+.cloud{position:fixed;height:22px;background:#fff;opacity:.9;z-index:-2;box-shadow:0 6px 0 rgba(0,0,0,.06);animation:drift linear infinite}
+.cloud:before{content:"";position:absolute;left:22%;top:-14px;width:46%;height:16px;background:inherit}
+@keyframes drift{from{transform:translateX(-30vw)}to{transform:translateX(130vw)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}
+#fx i{position:absolute;top:-20px;width:8px;height:8px;animation:fall linear infinite}
+@keyframes fall{to{transform:translate(60px,110vh) rotate(540deg)}}
+#ground{position:fixed;left:0;right:0;bottom:0;height:70px;z-index:5;background:var(--t-grassside) repeat-x 0 0/64px 64px,var(--t-dirt) repeat 0 0/64px 64px;image-rendering:pixelated;border-top:3px solid rgba(0,0,0,.35)}
+h1,h2,h3{font-weight:700;margin:0}
+h1{font-size:clamp(26px,4vw,40px);line-height:1.08;color:#fff;text-shadow:3px 3px 0 #000,0 0 18px rgba(0,0,0,.35);text-wrap:balance}
+h2{font-size:22px;margin-bottom:10px}
+h3{font-size:18px;margin-bottom:6px}
+p{margin:6px 0}
+a{color:#1f56c8}
+.wrap{max-width:1200px;margin:0 auto;padding:16px max(3vw,12px)}
+.logo{font-family:'Press Start 2P',monospace;font-size:clamp(16px,2.4vw,22px);color:#d8d8d8;text-shadow:1px 1px 0 #7a7a7a,2px 2px 0 #5a5a5a,3px 3px 0 #3a3a3a,4px 4px 0 #111;white-space:nowrap;letter-spacing:1px}
+.logo b{color:#ffd83d;text-shadow:1px 1px 0 #b78a00,2px 2px 0 #8a6800,3px 3px 0 #5a4300,4px 4px 0 #111;font-weight:400}
+.splash{font-family:'Press Start 2P';font-size:13px;color:#ffff3f;text-shadow:2px 2px #3f3f00;transform:rotate(-12deg);display:inline-block;animation:pulse .5s ease-in-out infinite alternate;white-space:nowrap}
+@keyframes pulse{to{transform:rotate(-12deg) scale(1.08)}}
+/* panels */
+.panel{position:relative;background:var(--paper);color:var(--ink);border-style:solid;border-width:10px;border-image-source:var(--t-oak);border-image-slice:5;border-image-repeat:round;box-shadow:0 0 0 3px #1a120a,6px 8px 0 3px rgba(0,0,0,.22);padding:14px 16px;image-rendering:pixelated}
+.panel.stone{border-image-source:var(--t-cobble);background:#eef0f4}
+.panel.copper{border-image-source:var(--t-copper);background:#fff0e6}
+.panel.dark{border-image-source:var(--t-deep);background:#1d2030;color:#f2f2f2}
+.panel.ench{border-image-source:var(--t-amethyst);background:#f6eeff}
+.panel.leaf{border-image-source:var(--t-leaf);background:#fbfff2}
+.panel.gold{border-image-source:var(--t-goldb);background:#fffbe6}
+.panel.dark a{color:#8fd3ff}
+.btn{font:600 18px/1 'Pixelify Sans',sans-serif;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.45);background:#7b7f8a;border:3px solid #111;box-shadow:inset 3px 3px 0 rgba(255,255,255,.35),inset -3px -4px 0 rgba(0,0,0,.3);padding:9px 14px;min-height:44px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center;white-space:nowrap;text-decoration:none}
+.btn:hover{filter:brightness(1.15)}
+.btn:active{transform:translateY(2px)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.slot:focus-visible{outline:3px solid #ffff3f;outline-offset:2px}
+.btn.go{background:#3faa36}.btn.red{background:#c8322b}.btn.cu{background:#d9733f}.btn.ench{background:#8e4fd6}.btn.blue{background:#3b63d8}
+.btn.gold{background:#f0b81c;color:#3a2a00;text-shadow:1px 1px 0 rgba(255,255,255,.4)}
+.btn.sm{font-size:16px;min-height:38px;padding:6px 10px}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none;filter:none}
+input,select,textarea{font:500 17px 'Pixelify Sans',sans-serif;background:#1b1b1f;color:#fff;border:3px solid #8a8a8a;padding:7px 9px;min-height:44px;width:100%;border-radius:0}
+input::placeholder,textarea::placeholder{color:#9a9aa5}
+textarea{min-height:150px;resize:vertical;line-height:1.3}
+input:focus,select:focus,textarea:focus{border-color:#fff}
+input[type=checkbox]{width:24px;min-height:24px;accent-color:#3faa36}
+label{display:block;margin:12px 0 4px;font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.between{justify-content:space-between}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.muted{opacity:.72}.small{font-size:16px}
+.stack{display:grid;gap:14px}
+.split{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+.vtitle{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;justify-content:space-between;margin:6px 0 16px}
+.vtitle p{color:#fff;text-shadow:2px 2px 0 #000;font-size:18px;margin:4px 0 0}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:14px;font-weight:600;padding:3px 7px;border:2px solid #111;color:#fff;background:#555;white-space:nowrap}
+.chip.learn{background:#3b63d8}.chip.practice{background:#c8322b}.chip.revise{background:#8e4fd6}.chip.test{background:#e3a812;color:#2a1f00}
+.chip.free{background:#3faa36}.chip.paid{background:#b5651d}.chip.lt{background:#eee;color:#222}
+/* header */
+header.top{position:sticky;top:0;z-index:20;background:var(--t-grassside) repeat-x 0 0/64px 64px,var(--t-dirt) repeat 0 0/64px 64px;image-rendering:pixelated;border-bottom:3px solid #000;color:#fff;text-shadow:2px 2px 0 #000}
+.topin{max-width:1200px;margin:0 auto;padding:18px max(3vw,12px) 10px;display:flex;gap:14px 22px;align-items:center;flex-wrap:wrap}
+.who{flex:1 1 200px;display:flex;align-items:center;gap:12px}
+.who .face{width:40px;height:40px;border:3px solid #000;background:#222;flex:none}
+.cur{display:flex;gap:6px 14px;flex-wrap:wrap}
+.cur span{display:inline-flex;align-items:center;gap:5px;font-size:20px;font-weight:700;white-space:nowrap}
+/* HUD */
+.hud{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:30;display:grid;justify-items:center;gap:4px}
+.hearts{display:flex;gap:2px;align-self:start;justify-self:start}
+.xpbar{width:100%;height:12px;background:#111;border:2px solid #000;position:relative}
+.xpbar i{display:block;height:100%;background:linear-gradient(#c6ff6a,#5fbf1f)}
+.xpbar b{position:absolute;left:50%;top:-17px;transform:translateX(-50%);font:14px 'Press Start 2P';color:#80ff20;text-shadow:2px 0 #000,-2px 0 #000,0 2px #000,0 -2px #000;font-weight:400}
+.hotbar{display:flex;background:rgba(20,20,20,.6);border:3px solid #000;padding:3px}
+.hotbar button{width:62px;height:62px;border:0;background:rgba(139,139,139,.85);box-shadow:inset 3px 3px 0 #373737,inset -3px -3px 0 #d6d6d6;cursor:pointer;display:grid;place-items:center;position:relative;padding:0}
+.hotbar button.on{outline:4px solid #fff;outline-offset:-2px;z-index:1;background:rgba(170,170,170,.95)}
+.hotbar button b{position:absolute;right:4px;bottom:1px;font:600 14px 'Pixelify Sans';color:#fff;text-shadow:1px 1px #000}
+.hlabel{font:600 16px 'Pixelify Sans';color:#fff;text-shadow:2px 2px #000;white-space:nowrap}
+/* tooltip */
+.tip{position:fixed;z-index:80;background:#100010f0;border:2px solid #2a0a5e;outline:2px solid #100010;color:#fff;padding:6px 9px;font-size:16px;pointer-events:none;max-width:280px}
+/* quests */
+.qbar{height:22px;background:#111;border:3px solid #000;margin-top:8px}
+.qbar i{display:block;height:100%;background:repeating-linear-gradient(90deg,#4ee6dc 0 14px,#2fbfb5 14px 16px)}
+.quests{display:grid;gap:12px}
+.q{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:14px;align-items:center;border-left-width:16px}
+.q.learn{border-image-source:var(--t-lapis)}.q.practice{border-image-source:var(--t-redstone)}.q.revise{border-image-source:var(--t-amethyst)}.q.test{border-image-source:var(--t-goldb)}
+.slot{background:#8b8b8b;box-shadow:inset 3px 3px 0 #373737,inset -3px -3px 0 #fff;display:grid;place-items:center;width:64px;height:64px;position:relative;flex:none}
+.q .tt{font-size:22px;font-weight:700;line-height:1.15}
+.q .meta{display:flex;gap:6px 12px;flex-wrap:wrap;font-size:16px;align-items:center;margin-top:4px}
+.q .acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.q details{grid-column:2/4;font-size:17px}
+.q summary{cursor:pointer;color:#1f56c8;font-weight:600;width:max-content;max-width:100%}
+.how{white-space:pre-wrap;background:#f1e3c6;border:3px solid #c9a46a;padding:8px 10px;margin-top:6px}
+.q.done{opacity:.8}.q.done .tt{text-decoration:line-through;text-decoration-thickness:3px}
+.q.doing{background:#e9ffe0}
+.q.missed,.q.skipped,.q.rested{opacity:.55}
+.timer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;margin-bottom:14px}
+.timer .big{font-family:'Press Start 2P';font-size:clamp(26px,6vw,46px);color:#80ff20;text-shadow:4px 4px #000;margin:8px 0}
+.tprog{height:12px;background:#000;border:2px solid #555;max-width:460px}.tprog i{display:block;height:100%;background:#80ff20}
+/* modal & toasts */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:60;padding:12px}
+.modal{width:min(680px,100%);max-height:92vh;overflow:auto}
+.modal.wide{width:min(940px,100%)}
+.toasts{position:fixed;top:90px;right:12px;display:grid;gap:8px;z-index:70;width:min(340px,calc(100vw - 24px))}
+.toast{background:#212121;color:#fff;border:3px solid #000;box-shadow:inset 3px 3px 0 #555,inset -3px -3px 0 #111;padding:10px 12px;animation:slide .3s steps(4);display:flex;gap:10px;align-items:center}
+.toast b{display:block;color:#ffff3f;font-weight:700}
+.toast.advt b{color:#c27bff}
+@keyframes slide{from{transform:translateX(110%)}}
+.chestwrap{display:grid;place-items:center;padding:6px 0}
+.chestbig{overflow:visible}.chestbig .lid{transform-box:fill-box;transform-origin:0 100%;transition:transform .55s steps(6)}
+.chestbig.open .lid{transform:translate(0,-1px) rotate(-24deg)}
+.loot{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:10px 0;min-height:70px}
+.loot .slot{width:72px;height:72px;animation:pop .45s steps(4) backwards}
+.loot .slot b{position:absolute;right:4px;bottom:0;color:#fff;text-shadow:2px 2px #3f3f3f;font-size:22px}
+@keyframes pop{from{transform:scale(0) translateY(30px)}}
+/* chests */
+.subs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.subc{cursor:pointer;text-align:left;font:inherit;display:grid;gap:6px;width:100%}
+.subc:hover{transform:translateY(-3px)}
+.subc .nm{font-size:20px;font-weight:700}
+.mini{height:12px;background:#333;border:2px solid #000}.mini i{display:block;height:100%;background:#3faa36}
+.tbl{width:100%;border-collapse:collapse;font-size:17px}
+.tbl td,.tbl th{padding:6px;border-bottom:2px solid #d6c3a0;text-align:left;vertical-align:middle}
+.tbl th{font-size:15px}
+.tbl td.n{text-align:right;white-space:nowrap}
+.tbl select{min-height:38px;font-size:16px;padding:2px 4px}
+/* armory */
+.armory{display:grid;grid-template-columns:minmax(230px,340px) minmax(0,1fr);gap:16px;align-items:start}
+.hero{display:grid;place-items:center;padding:20px 0 0;position:relative;overflow:hidden;background:linear-gradient(var(--sky1),var(--sky2))}
+.hero .gr{width:100%;height:56px;background:var(--t-grassside) repeat-x 0 0/48px 48px;image-rendering:pixelated;margin-top:-6px}
+.hero svg{filter:drop-shadow(6px 6px 0 rgba(0,0,0,.3));position:relative;z-index:1}
+.glint{animation:glint 2.4s steps(8) infinite;mix-blend-mode:screen}
+@keyframes glint{0%,100%{opacity:0}50%{opacity:.55}}
+.piece{display:grid;grid-template-columns:64px minmax(0,1fr);gap:8px 12px;align-items:center;padding:10px 0;border-bottom:2px solid #d6c3a0}
+.piece>.row{grid-column:1/-1}
+.enchl{color:#7a2bd6;font-weight:600}
+.trade{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:2px dashed #d6c3a0}
+/* stats */
+.heat{display:grid;grid-template-columns:repeat(19,minmax(0,1fr));gap:3px}
+.heat div{aspect-ratio:1;border:2px solid #000}
+.heat span{font-size:14px;text-align:center;display:block}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:120px minmax(0,1fr) 70px;gap:8px;align-items:center;font-size:17px}
+.bar .tr{height:20px;background:#555;border:2px solid #000}.bar .tr i{display:block;height:100%}
+.bar .n{text-align:right;white-space:nowrap}
+.cols{display:flex;align-items:flex-end;gap:4px;height:150px;border-bottom:3px solid #000;padding-top:10px}
+.cols div{flex:1;background:#4ee6dc;border:2px solid #000;border-bottom:0;min-height:2px}
+.cols div.today{background:#ffd83d}
+.colsl{display:flex;gap:4px;font-size:14px}.colsl span{flex:1;text-align:center}
+.advs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.adv{display:flex;gap:8px;align-items:center;padding:6px;border:2px solid #d6c3a0;background:#fff}
+.adv.off{opacity:.45;filter:grayscale(1)}
+/* helper & library */
+.chat{display:grid;gap:8px;max-height:420px;overflow:auto;padding:4px}
+.msg{padding:8px 10px;border:3px solid #111;white-space:pre-wrap;max-width:92%}
+.msg.me{justify-self:end;background:#dff1ff}
+.msg.ai{justify-self:start;background:#fff0e6;border-color:#a54f2a}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.card{display:grid;gap:6px;align-content:start}
+.card .shelf{height:26px;margin:-14px -16px 6px;background:var(--t-books) repeat-x 0 0/48px 48px;image-rendering:pixelated;border-bottom:3px solid #3a2410}
+.card h3{font-size:19px}
+.pick{background:#ffd83d;color:#2a1f00;border:2px solid #111;font-weight:700;font-size:14px;padding:2px 6px}
+.plan{display:grid;gap:12px}
+.intent{font-size:19px;font-weight:600;background:#fff;border:3px dashed #d9733f;padding:10px}
+.steps{display:flex;gap:6px;margin-bottom:12px}.steps i{flex:1;height:10px;background:#555;border:2px solid #000}.steps i.on{background:#3faa36}
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.theme{border:3px solid #111;padding:0;cursor:pointer;background:#fff;font:inherit;text-align:left}
+.theme.on{outline:4px solid #ffd83d}
+.theme .sw{height:58px;image-rendering:pixelated}
+.theme span{display:block;padding:6px 8px;font-weight:700}
+.filters{display:grid;grid-template-columns:2fr repeat(4,minmax(0,1fr));gap:10px}
+@media(max-width:860px){.filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.filters input{grid-column:1/-1}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+body{font-weight:500}
+.panel{background-image:linear-gradient(rgba(255,255,255,.45),rgba(255,255,255,0) 60px);box-shadow:0 0 0 3px #1a120a,0 8px 0 3px rgba(0,0,0,.3),0 18px 28px rgba(0,0,0,.28)}
+.panel.dark{background-image:linear-gradient(rgba(255,255,255,.06),rgba(255,255,255,0) 60px)}
+.vtitle{background:rgba(14,11,8,.7);border:3px solid #000;box-shadow:inset 0 0 0 2px rgba(255,255,255,.1),0 8px 0 rgba(0,0,0,.3);padding:14px 18px}
+.vtitle p{color:#f3ead8;text-shadow:1px 1px 0 #000}
+.q .meta{color:#3b2a1a}
+.q.task{border-image-source:var(--t-copper)}
+.chip.task{background:#18a0a8}
+.topnav{display:none;flex:1 1 100%;gap:4px;overflow-x:auto;padding-top:4px}
+.topnav button{display:inline-flex;align-items:center;gap:6px;font:600 16px 'Pixelify Sans',sans-serif;color:#fff;text-shadow:2px 2px 0 #000;background:rgba(0,0,0,.35);border:2px solid rgba(0,0,0,.6);padding:5px 10px;cursor:pointer;white-space:nowrap;min-height:38px}
+.topnav button.on{background:rgba(255,255,255,.22);border-color:#fff}
+.topnav button:hover{background:rgba(255,255,255,.15)}
+@media(min-width:1100px){.topnav{display:flex;order:3}}
+.flowgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}
+.flowmain{display:grid;gap:10px}
+.fchat{min-height:280px;max-height:52vh;overflow:auto;padding:4px;display:grid;gap:8px;align-content:start}
+.fchat .msg{color:#1f140a}
+.cmdbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.cmdbar textarea{min-height:72px;font-size:18px}
+.cmdbtns{display:grid;gap:8px;align-content:stretch}
+.mic.on{background:#c8322b;animation:pulse2 1s steps(2) infinite}
+@keyframes pulse2{50%{filter:brightness(1.35)}}
+.receipt{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px 8px;border:2px solid #111;background:#fff;margin-top:6px;color:#1f140a}
+.weekmini{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:8px}
+.wm{font:600 14px 'Pixelify Sans';display:grid;gap:2px;justify-items:center;padding:6px 2px;border:2px solid #111;background:#fff;cursor:pointer;min-height:52px}
+.wm span{font-size:20px}.wm.on{background:#ffd83d}
+.week{display:grid;grid-template-columns:repeat(7,minmax(185px,1fr));gap:10px;overflow-x:auto;padding:10px 2px 8px;scroll-snap-type:x mandatory}
+.wday{scroll-snap-align:start;background:rgba(255,255,255,.6);border:3px solid #6b4f2a;padding:8px;min-height:180px;display:flex;flex-direction:column}
+.wday.on{background:#fff8d6;border-color:#e3a812}
+.wt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;border:2px solid #111;border-left-width:8px;background:#fff;margin-top:6px;padding:4px 6px}
+.wt.learn{border-left-color:#3b63d8}.wt.practice{border-left-color:#c8322b}.wt.revise{border-left-color:#8e4fd6}.wt.test{border-left-color:#e3a812}.wt.task{border-left-color:#18a0a8}
+.wt.done{opacity:.6}.wt.done .wtb span:last-child{text-decoration:line-through}.wt.missed,.wt.skipped,.wt.rested{opacity:.45}
+.wtb{flex:1 1 140px;display:grid;gap:2px;text-align:left;font:500 16px 'Pixelify Sans',sans-serif;background:none;border:0;padding:4px 0;cursor:pointer;color:#1f140a;min-height:44px}
+@media(max-width:860px){.flowgrid{grid-template-columns:minmax(0,1fr)}.fchat{max-height:42vh;min-height:140px}.flowmain .cmdbar{order:-2}.flowmain .fchips{order:-1}}
+@media(max-width:600px){.cmdbar{grid-template-columns:minmax(0,1fr)}.cmdbtns{grid-template-columns:1fr 1fr}.hotbar button{width:38px;height:38px}.hotbar button svg{width:24px;height:auto}.hotbar button b{font-size:12px}.topin{padding-top:16px}}
+@media (orientation:landscape) and (max-height:520px){
+ header.top{position:static}.topin{padding:14px 12px 6px;gap:6px 14px}.splash,.who .face{display:none}
+ .hud{left:6px;top:50%;bottom:auto;transform:translateY(-50%);gap:0}
+ .hud .hearts,.hud .xpbar,.hud .hlabel{display:none}
+ .hotbar{flex-direction:column;padding:2px}
+ .hotbar button{width:38px;height:38px}.hotbar button svg{width:24px;height:auto}.hotbar button b{display:none}
+ #ground{display:none}
+ body{padding-bottom:24px;padding-left:56px}
+ .wrap{padding-top:10px}h1{font-size:24px}.vtitle{padding:10px 14px;margin-bottom:12px}
+ .split,.armory,.flowgrid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+ .fchat{max-height:60vh;min-height:180px}.cmdbar textarea{min-height:52px}
+ .ov{padding:6px}.modal{max-height:96vh}
+ .toasts{top:10px}
+}
+.loading{min-height:80vh;display:grid;place-items:center;text-align:center}
+.empty{text-align:center;padding:24px}
+@media(max-width:860px){.armory,.split{grid-template-columns:minmax(0,1fr)}.grid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:600px){
+ body{font-size:17px}
+ .q{grid-template-columns:48px minmax(0,1fr)}.q .slot{width:48px;height:48px}
+ .q .acts{grid-column:1/3;justify-content:stretch}.q .acts .btn{flex:1}
+ .q details{grid-column:1/3}
+ .timer{grid-template-columns:minmax(0,1fr)}
+ .grid2,.grid3{grid-template-columns:minmax(0,1fr)}
+ .hotbar button{width:46px;height:46px}.hotbar button svg{width:28px;height:auto}
+ .heat{grid-template-columns:repeat(10,minmax(0,1fr))}
+ .bar{grid-template-columns:84px minmax(0,1fr) 56px}
+ .piece{grid-template-columns:48px minmax(0,1fr)}.piece .slot{width:48px;height:48px}
+ .splash{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}#fx{display:none}}
+</style></head><body>
+<div id="sky"></div><div id="sun"></div><div id="clouds"></div><div id="fx"></div>
+<header class="top" id="top" hidden></header>
+<main class="wrap" id="view"><div class="loading"><div><div class="logo">Flow<b>Craft</b></div><h1 style="margin-top:20px">Generating world…</h1></div></div></main>
+<div id="ground"></div>
+<div class="hud" id="hud" hidden></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="modal"></div>
+<script>
+{
+/* ================= helpers ================= */
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10);
+const z=n=>String(n).padStart(2,'0');
+const dkey=(d=new Date())=>d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate());
+const addDays=(k,n)=>{const d=new Date(k+'T12:00:00');d.setDate(d.getDate()+n);return dkey(d)};
+const daysBetween=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
+const nowMin=()=>{const d=new Date();return d.getHours()*60+d.getMinutes()};
+const fmtT=m=>m==null?'Anytime':((Math.floor(m/60)%12)||12)+':'+z(m%60)+(m%1440<720?' am':' pm');
+const fmtDur=ms=>{const s=Math.max(0,Math.floor(ms/1000)),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+':'+z(m):m)+':'+z(s%60)};
+const fmtMin=m=>{m=Math.round(m);return m>=60?Math.floor(m/60)+'h '+z(m%60)+'m':m+'m'};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const r5=n=>Math.max(15,Math.round(n/5)*5);
+const dayName=k=>new Date(k+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+const safeUrl=u=>/^https:\/\//.test(String(u||''))?String(u):null;
+
+/* ================= procedural textures ================= */
+function rng(seed){let s=seed%2147483647;if(s<=0)s+=2147483646;return()=>(s=s*16807%2147483647)/2147483647}
+function hsh(str){let h=7;for(const c of str)h=(h*31+c.charCodeAt(0))>>>0;return h||1}
+function tex(kind,P){
+ const c=document.createElement('canvas');c.width=c.height=16;const g=c.getContext('2d');const r=rng(hsh(kind+P.join('')));
+ const put=(x,y,col)=>{g.fillStyle=col;g.fillRect(x,y,1,1)};const pick=()=>P[Math.floor(r()*P.length)];
+ for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+  let col=pick();
+  if(kind==='planks'){const band=Math.floor(y/4);col=[P[0],P[1],P[0],P[2]][band];if(y%4===3)col=P[3];if((x+band*5)%8===7&&y%4!==3)col=P[3];if(r()<.12)col=P[2]}
+  if(kind==='grassside'){const edge=3+((x*7+3)%3===0?1:0)+(x%5===0?1:0);col=y<edge?P[Math.floor(r()*4)]:P[4+Math.floor(r()*3)];if(y===edge&&r()<.4)col=P[1]}
+  if(kind==='cobble'){const cell=((Math.floor((x+(Math.floor(y/5)%2)*3)/5))+Math.floor(y/5))%3;col=P[cell];if(x%5===0||y%5===0)col=P[3];if(r()<.15)col=P[4]||P[0]}
+  if(kind==='copper'){col=P[Math.floor(r()*3)];if(x===0||y===0)col=P[3];if(x===15||y===15)col=P[4];if((x===7||y===7)&&r()<.5)col=P[4]}
+  if(kind==='books'){if(y<2||y>13)col=P[0];else if(y===2||y===13)col=P[1];else{const b=Math.floor(x/2);col=P[2+(b*3+(y>7?1:0))%5];if(x%2===1&&r()<.25)col='#1b1b1b'}}
+  if(kind==='ore'){col=P[Math.floor(r()*3)];const cx=[4,11,6],cy=[4,6,12];for(let i=0;i<3;i++)if(Math.abs(x-cx[i])+Math.abs(y-cy[i])<2.2)col=r()<.5?P[3]:P[4]}
+  put(x,y,col);
+ }
+ return `url(${c.toDataURL()})`;
+}
+const BASE_TEX={
+ oak:['planks',['#b8945f','#a27e4d','#c9a46a','#6b4f2a']],
+ cobble:['cobble',['#8a8a8a','#9d9d9d','#7a7a7a','#4d4d4d','#b0b0b0']],
+ copper:['copper',['#e07a4a','#c86a3c','#f09060','#ffb488','#8f4a26']],
+ deep:['cobble',['#3a3d4a','#454856','#2f3240','#1c1d24','#50536a']],
+ amethyst:['copper',['#8e4fd6','#a46ce8','#7a3cc2','#d0a8ff','#4b1f80']],
+ goldb:['copper',['#f6d33c','#ffe36a','#e3b81c','#fff5b0','#a87a00']],
+ lapis:['copper',['#2d4fbf','#3b63d8','#2541a0','#86a3ff','#132666']],
+ redstone:['copper',['#b3261e','#c8322b','#9c1d16','#ff6a5c','#5c0d09']],
+ books:['books',['#6b4f2a','#3a2410','#c8322b','#3b63d8','#3faa36','#e3a812','#8e4fd6']],
+ diaore:['ore',['#8a8a8a','#9d9d9d','#7a7a7a','#4ee6dc','#c9fff9']]
+};
+
+/* ================= biomes ================= */
+const THEMES={
+ dappled:{name:'Dappled Forest',grass:['#d9822b','#e89a3c','#c46f1f','#f2a33a'],leaf:['#e0742a','#c9471f','#f2a33a','#a8341a'],paper:'#fff6e6',acc:'#e8651e',fx:['#e0742a','#c9471f','#f2a33a','#a8341a'],tint:[1,.92,.82]},
+ plains:{name:'Plains',grass:['#6abf40','#7ed14f','#5aa632','#8fdc5e'],leaf:['#4f9a2c','#5fb036','#3f8323','#71c046'],paper:'#fbfff2',acc:'#3faa36',fx:null,tint:[1,1,1]},
+ cherry:{name:'Cherry Grove',grass:['#7cc24e','#8fd25c','#6aaf3f','#9be06a'],leaf:['#f7a8d0','#ffc4e1','#e88abc','#fcd6ea'],paper:'#fff4fa',acc:'#e86aa8',fx:['#f7a8d0','#ffc4e1','#e88abc','#fff'],tint:[1,.94,.98]},
+ ocean:{name:'Warm Ocean',grass:['#e9d79a','#f3e3a8','#dcc684','#fff0bd'],leaf:['#2bb3c0','#1f9aa8','#45c9d4','#7de0e6'],paper:'#effcff',acc:'#1f9aa8',fx:null,tint:[.9,1,1.05]},
+ pale:{name:'Pale Garden',grass:['#a5ab9e','#b8bdb1','#949a8e','#c6cbc0'],leaf:['#d8dcd3','#c6cbc0','#e9ece5','#b5baae'],paper:'#f5f5f2',acc:'#e8651e',fx:['#d8dcd3','#e9ece5','#fff','#c6cbc0'],tint:[.82,.85,.86]},
+ nether:{name:'Nether',grass:['#8c2a2a','#a33636','#6e1f1f','#b84a3a'],leaf:['#c22d2d','#e0442f','#8a1a1a','#ff7a3a'],paper:'#fff0ea',acc:'#e0442f',fx:['#ff7a3a','#ffb03a','#e0442f','#ffd36a'],tint:[1,.5,.4],fixedSky:['#3a0d0d','#a32b1c']},
+ deepdark:{name:'Deep Dark',grass:['#0f3b44','#145361','#0b2a31','#1d6b78'],leaf:['#0f5f6b','#18a0a8','#0b3a42','#2ee6d6'],paper:'#eefcfc',acc:'#18a0a8',fx:['#2ee6d6','#18a0a8','#7ff5ee','#0f5f6b'],tint:[.4,.5,.6],fixedSky:['#05080c','#0b2a31']}
+};
+function applyTheme(){
+ const th=THEMES[(S&&S.theme)||'dappled']||THEMES.dappled;const R=document.documentElement.style;
+ for(const k in BASE_TEX)R.setProperty('--t-'+k,tex(...BASE_TEX[k]));
+ R.setProperty('--t-grassside',tex('grassside',[...th.grass,'#866043','#79553a','#6c4a32']));
+ R.setProperty('--t-dirt',tex('noise',['#866043','#79553a','#6c4a32','#946b4b']));
+ R.setProperty('--t-leaf',tex('noise',th.leaf));
+ R.setProperty('--paper',th.paper);R.setProperty('--acc',th.acc);
+ const fx=$('#fx');fx.innerHTML='';
+ if(th.fx)for(let i=0;i<16;i++){const e=document.createElement('i');e.style.left=Math.random()*100+'vw';e.style.background=th.fx[i%th.fx.length];e.style.animationDuration=(9+Math.random()*10)+'s';e.style.animationDelay=(-Math.random()*18)+'s';fx.appendChild(e)}
+ applySky();
+}
+function applySky(){
+ const th=THEMES[(S&&S.theme)||'dappled']||THEMES.dappled;const R=document.documentElement.style;
+ const h=new Date().getHours()+new Date().getMinutes()/60;
+ let top,bot,night=false;
+ if(th.fixedSky){[top,bot]=th.fixedSky;night=true}
+ else if(h>=5&&h<7){top='#5b6fb8';bot='#ffb36b'}
+ else if(h>=7&&h<17){top='#5fb0ff';bot='#cfeaff'}
+ else if(h>=17&&h<19.5){top='#6a5ab8';bot='#ff9a5c'}
+ else{top='#0b1030';bot='#24305e';night=true}
+ const tint=c=>{const n=parseInt(c.slice(1),16);const t=th.tint;return `rgb(${Math.min(255,((n>>16)&255)*t[0])|0},${Math.min(255,((n>>8)&255)*t[1])|0},${Math.min(255,(n&255)*t[2])|0})`};
+ R.setProperty('--sky1',tint(top));R.setProperty('--sky2',tint(bot));
+ const sun=$('#sun');const frac=night?((h+24-19.5)%24)/9.5:clamp((h-5)/14.5,0,1);
+ sun.style.left=`calc(${8+frac*84}vw - 32px)`;sun.style.top=(130+Math.pow(frac-.5,2)*4*140)+'px';
+ sun.innerHTML=night?px(`..aaaa..
+.abbbba.
+abbcbbba
+abbbbcba
+abcbbbba
+abbbbbba
+.abbbba.
+..aaaa..`,{a:'#9aa3b8',b:'#e8ecf5',c:'#c4cad8'},64):px(`aaaaaaaa
+abbbbbba
+abccccba
+abccccba
+abccccba
+abccccba
+abbbbbba
+aaaaaaaa`,{a:'#ffe14a',b:'#fff27a',c:'#fffbd0'},64);
+ sun.style.display=th.fixedSky?'none':'block';
+ const cl=$('#clouds');if(!cl.children.length&&!th.fixedSky)for(let i=0;i<5;i++){const d=document.createElement('div');d.className='cloud';d.style.top=(70+i*55)+'px';d.style.width=(90+Math.random()*120)+'px';d.style.animationDuration=(80+i*25)+'s';d.style.animationDelay=(-i*30)+'s';cl.appendChild(d)}
+ cl.style.display=th.fixedSky?'none':'block';cl.style.opacity=night?.25:1;
+}
+
+/* ================= pixel icons ================= */
+function px(map,pal,w){const rows=map.trim().split('\n').map(r=>r.trim());const H=rows.length,W=Math.max(...rows.map(r=>r.length));let s='';rows.forEach((row,y)=>[...row].forEach((ch,x)=>{if(pal[ch])s+=`<rect x="${x}" y="${y}" width="1.05" height="1.05" fill="${pal[ch]}"/>`}));return `<svg viewBox="0 0 ${W} ${H}" width="${w}" height="${Math.round(w*H/W)}" shape-rendering="crispEdges" aria-hidden="true">${s}</svg>`}
+const GEM=`...aaaa...
+..abbcba..
+.abbbbcba.
+abbbbbbbda
+.adbbbbda.
+..adbbda..
+...adda...
+....aa....`;
+const ORB=`..aaaa..
+.abbbba.
+abbccbba
+abccccba
+abbccbba
+.abbbba.
+..aaaa..`;
+const IC={
+ dia:w=>px(GEM,{a:'#0b3d3a',b:'#4ee6dc',c:'#e6fffc',d:'#1a9c94'},w),
+ eme:w=>px(GEM,{a:'#0b3a17',b:'#3ddc6a',c:'#d8ffe2',d:'#17913a'},w),
+ lap:w=>px(GEM,{a:'#0c1a4a',b:'#3b63d8',c:'#c9d6ff',d:'#22399a'},w),
+ cu:w=>px(`..........
+...aaaaaa.
+..abbbbbca
+.abbbbbbca
+aabbbbbbca
+addddddda.
+aaaaaaaa..`,{a:'#4a1f0c',b:'#e07a4a',c:'#ffb488',d:'#a54f2a'},w),
+ xp:w=>px(ORB,{a:'#2d5a00',b:'#9be22d',c:'#f4ff9a'},w),
+ ingot:w=>px(`..........
+...aaaaaa.
+..abbbbbca
+.abbbbbbca
+aabbbbbbca
+addddddda.
+aaaaaaaa..`,{a:'#120e10',b:'#5a4f57',c:'#8a7f88',d:'#2e272c'},w),
+ bed:w=>px(`..........
+aaaaaaaaaa
+abbbbbbbba
+accccccccc
+acdcdcdcdc
+a.......a.`,{a:'#5e3b1a',b:'#fff',c:'#e3c25a',d:'#c9a03a'},w),
+ map:w=>px(`aaaaaaaa
+abbbcbba
+abccbbba
+abbbbdba
+abcbbbba
+abbbbcba
+aaaaaaaa`,{a:'#6b4f2a',b:'#f2e3b5',c:'#3faa36',d:'#c8322b'},w),
+ learn:w=>px(`.aaaaaaa.
+abbbbbbca
+abddddbca
+abbbbbbca
+abddddbca
+abbbbbbca
+abddbbbca
+aeeeeeeea
+.aaaaaaa.`,{a:'#1d1a14',b:'#3a6fc4',c:'#f1ead2',d:'#8fb5ef',e:'#b59a5a'},w),
+ practice:w=>px(`.......aa
+......aba
+.....aba.
+....aba..
+.a.aba...
+.aaba....
+..aa.....
+.acaa....
+cc..a....`,{a:'#1d1d1d',b:'#e0f6ff',c:'#7a4b22'},w),
+ revise:w=>px(`.aaaaaa.
+abbbbbba
+abccccba
+abbbbbba
+abccccba
+abbbbbba
+abcccbba
+.aaaaaa.`,{a:'#4a3412',b:'#f2e3b5',c:'#8e4fd6'},w),
+ test:w=>px(`..aaaa..
+.abbbba.
+abbcbbba
+abbcbbba
+abbccbba
+abbbbbba
+.abbbba.
+..aaaa..`,{a:'#3a2a00',b:'#ffd83d',c:'#3a2a00'},w),
+ chest:w=>px(`aaaaaaaaaa
+abbbbbbbba
+abbbbbbbba
+aaaaccaaaa
+abbbcdbbba
+abbbbbbbba
+abbbbbbbba
+abbbbbbbba
+aaaaaaaaaa`,{a:'#2b1a0b',b:'#a0692b',c:'#d9d9d9',d:'#333'},w),
+ cuchest:(w,col)=>px(`aaaaaaaaaa
+abbbbbbbba
+abcbbbbcba
+aaaaddaaaa
+abbbdebbba
+abbbbbbbba
+abcbbbbcba
+abbbbbbbba
+aaaaaaaaaa`,{a:'#2b1a0b',b:col,c:'rgba(255,255,255,.35)',d:'#d9d9d9',e:'#333'},w),
+ helm:w=>px(`..aaaaaa..
+.abbbbbba.
+abbbbbbbba
+abbaaaabba
+abba..abba
+aaa....aaa`,{a:'#1d1d1d',b:'#4ee6dc'},w),
+ stats:w=>px(`.........
+......aa.
+......ba.
+...aa.ba.
+...ba.ba.
+aa.ba.ba.
+ba.ba.ba.
+aaaaaaaaa`,{a:'#1d1d1d',b:'#ffd83d'},w),
+ gear:w=>px(`...aa...
+.a.ab.a.
+.abbbba.
+aabccbaa
+.abccba.
+.abbbba.
+.a.ab.a.
+...aa...`,{a:'#1d1d1d',b:'#b0b0b0',c:'#555'},w),
+ shelf:w=>px(`aaaaaaaaa
+bcdbebfcb
+bcdbebfcb
+aaaaaaaaa
+bfbecdbcb
+bfbecdbcb
+aaaaaaaaa`,{a:'#6b4f2a',b:'#3a2410',c:'#c8322b',d:'#3b63d8',e:'#3faa36',f:'#e3a812'},w),
+ golem:(w,col='#e07a4a')=>px(`....aa....
+...abba...
+.aaaaaaaa.
+abbbbbbbba
+abccbbccba
+abbbddbbba
+.abbbbbba.
+.aabbbbaa.
+.ab.aa.ba.
+.aa....aa.`,{a:'#3a1a0a',b:col,c:'#ffd36a',d:'#8f4a26'},w),
+ check:w=>px(`.......aa
+......aba
+.....aba.
+aa..aba..
+aba.ba...
+.abab....
+..aa.....`,{a:'#0d3d06',b:'#62e23c'},w),
+ heart:(w,full)=>px(`.aa.aa.
+abbabba
+abbbbba
+.abbba.
+..aba..
+...a...`,{a:'#1a0000',b:full?'#e2231a':'#4a1a1a'},w),
+ book2:w=>px(`.aaaaaaa.
+abbbbbbca
+abbbbbbca
+abbbbbbca
+abbbbbbca
+aeeeeeeea
+.aaaaaaa.`,{a:'#1d0f2d',b:'#8e4fd6',c:'#f1ead2',e:'#d0a8ff'},w),
+ task:w=>px(`.aaaaaa.
+abbccbba
+abbbbbba
+abdbbbba
+abbbbbba
+abdbbbba
+abbbbbba
+.aaaaaa.`,{a:'#0b3a42',b:'#e6fbff',c:'#18a0a8',d:'#18a0a8'},w),
+ mic:w=>px(`..aaaa..
+.abbbba.
+.abbbba.
+.abbbba.
+aabbbbaa
+a.aaaa.a
+.a....a.
+..aaaa..
+...aa...
+.aaaaaa.`,{a:'#fff',b:'#fff'},w),
+ cmd:w=>px(`aaaaaaaa
+abbbbbba
+abcccbba
+abcbcbba
+abcccbba
+abbbbdba
+abbbbbba
+aaaaaaaa`,{a:'#3a2410',b:'#d98a4a',c:'#f4e3c0',d:'#55ff55'},w),
+ cushion:w=>px(`........
+.aaaaaa.
+abbbbbba
+abcbbcba
+abbbbbba
+.aaaaaa.`,{a:'#7a1d4a',b:'#e86aa8',c:'#ffc4e1'},w)
+};
+const TYPEN={learn:'Learn',practice:'Practice',revise:'Revise',test:'Mock test',task:'Task'};const STUDYT=['learn','practice','revise','test'];
+const LOOTN={dia:'Diamond',eme:'Emerald',lap:'Lapis',xp:'XP',ingot:'Netherite ingot',cu:'Copper ingot',bed:'Straw bed',map:'Explorer map'};
+
+/* ================= armor ================= */
+const TIERS=[['Leather','#8b5a2b','#5e3b1a'],['Copper','#e07a4a','#a54f2a'],['Iron','#e1e1e1','#a0a0a0'],['Gold','#f6d33c','#c49a12'],['Diamond','#4ee6dc','#1f9c94'],['Netherite','#4a4148','#2a2328']];
+const UPC=[0,1,3,5,8,10];
+const PIECES=[['helmet','Helmet'],['chest','Chestplate'],['legs','Leggings'],['boots','Boots']];
+const PR={helmet:[[4,0,8,3],[4,3,1,4],[11,3,1,4]],chest:[[4,8,8,10],[0,8,4,4],[12,8,4,4]],legs:[[4,18,8,3],[4,21,4,6],[8,21,4,6]],boots:[[4,27,4,5],[8,27,4,5]]};
+const SKINS={student:{skin:'#c68a5e',hair:'#1d1a22',top:'#e0a526',top2:'#b8821a',pants:'#3d3f4a'},coder:{skin:'#8d5a3b',hair:'#2a1a10',top:'#3b63d8',top2:'#2541a0',pants:'#2b2b33'},artist:{skin:'#f1c09a',hair:'#c8322b',top:'#3faa36',top2:'#2a7a24',pants:'#5a3c8c'},night:{skin:'#a8714e',hair:'#0e0e14',top:'#2a2f45',top2:'#8e4fd6',pants:'#1c1d24'}};
+function hero(w){
+ const sk=SKINS[S.skin||'student']||SKINS.student;
+ const R=(x,y,ww,h,f)=>`<rect x="${x}" y="${y}" width="${ww}" height="${h}" fill="${f}"/>`;
+ let s=R(4,0,8,8,sk.skin)+R(4,0,8,2,sk.hair)+R(4,2,1,2,sk.hair)+R(11,2,1,2,sk.hair);
+ s+=R(5,4,2,2,'#2b2b2b')+R(9,4,2,2,'#2b2b2b')+R(5,4,1,1,'#fff')+R(10,4,1,1,'#fff')+R(7,4,2,1,'#2b2b2b')+R(7,6,2,1,'#8a4b34');
+ s+=R(4,8,8,12,sk.top)+R(7,8,2,12,sk.top2)+R(0,8,4,9,sk.top)+R(12,8,4,9,sk.top)+R(0,17,4,3,sk.skin)+R(12,17,4,3,sk.skin);
+ s+=R(4,20,8,9,sk.pants)+R(7,22,2,7,'rgba(0,0,0,.2)')+R(4,29,4,3,'#222')+R(8,29,4,3,'#222');
+ PIECES.forEach(([k])=>{const a=S.armor[k],[,m,d]=TIERS[a.t];if(a.t===0&&!S.showLeather)return;PR[k].forEach(([x,y,ww,h])=>{s+=R(x,y,ww,h,m)+R(x,y+h-1,ww,1,d)+R(x+ww-1,y,1,h,d)+R(x,y,ww,1,'rgba(255,255,255,.4)')});
+  if(a.prot||a.fort)PR[k].forEach(([x,y,ww,h])=>{s+=`<rect class="glint" x="${x}" y="${y}" width="${ww}" height="${h}" fill="#c27bff"/>`})});
+ return `<svg viewBox="0 0 16 32" width="${w}" height="${w*2}" shape-rendering="crispEdges" role="img" aria-label="Your character">${s}</svg>`;
+}
+function face(w){const sk=SKINS[S.skin||'student']||SKINS.student;return px(`hhhhhhhh
+hhhhhhhh
+hssssssh
+sssssss
+sbwsswbs
+sssssss
+ssmmmsss
+ssssssss`,{h:sk.hair,s:sk.skin,b:'#2b2b2b',w:'#fff',m:'#8a4b34'},w)}
+function pieceIcon(k,w){const a=S.armor[k],[,m]=TIERS[a.t];const M={helmet:`.aaaaaa.
+abbbbbba
+abbbbbba
+ab....ba
+ab....ba`,chest:`aa.aa.aa
+abba.bba
+abbbbbba
+.abbbba.
+.abbbba.
+.abbbba.
+.aaaaaa.`,legs:`aaaaaaaa
+abbbbbba
+abba.bba
+abba.bba
+abba.bba
+aaaa.aaa`,boots:`........
+aaa..aaa
+aba..aba
+aba..aba
+abbaabba
+aaaaaaaa`};return px(M[k],{a:'#111',b:m},w)}
+
+/* ================= sound ================= */
+let AC;
+function beep(notes){if(S&&S.profile&&S.profile.sound===false)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();let t=AC.currentTime;notes.forEach(([f,d])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.045,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d);t+=d*.85})}catch(e){}}
+const SND={click:[[660,.04]],start:[[523,.08],[784,.1]],chest:[[392,.08],[523,.08],[659,.08],[1047,.18]],bad:[[220,.15],[147,.25]],up:[[523,.07],[659,.07],[784,.07],[1047,.07],[1319,.2]],adv:[[784,.1],[988,.1],[1175,.1],[1568,.25]]};
+
+/* ================= course library (researched Nov 2026) ================= */
+const CAT=[
+['khan-math','Khan Academy Math (basics to calculus)','Khan Academy','https://www.khanacademy.org/math','Mathematics','All levels','Free','Course','school calculus algebra practice','Video lessons with mastery practice for every school maths topic.'],
+['khan-phys','Khan Academy Physics','Khan Academy','https://www.khanacademy.org/science/physics','Physics','Beginner','Free','Course','school mechanics electricity','Mechanics, electricity and waves with practice exercises.'],
+['khan-chem','Khan Academy Chemistry','Khan Academy','https://www.khanacademy.org/science/chemistry','Chemistry','Beginner','Free','Course','school stoichiometry bonding','Atoms, bonding, stoichiometry and reactions.'],
+['ncert','NCERT textbooks (free PDFs)','NCERT','https://ncert.nic.in/textbook.php','School (India)','Beginner','Free','Textbook','india cbse class 11 12 physics chemistry maths','The standard Class 11-12 books; best first source for board syllabus.'],
+['openstax','OpenStax free textbooks','OpenStax (Rice University)','https://openstax.org/subjects','Mathematics','Intermediate','Free','Textbook','calculus physics chemistry university textbook','Peer-reviewed university textbooks: Calculus, University Physics, Chemistry.'],
+['paul','Paul\'s Online Math Notes','Lamar University','https://tutorial.math.lamar.edu','Mathematics','Intermediate','Free','Textbook','calculus algebra differential equations practice','Very clear calculus notes with worked practice problems and solutions.'],
+['3b1b-calc','Essence of Calculus','3Blue1Brown','https://www.3blue1brown.com/topics/calculus','Mathematics','Intermediate','Free','Video','calculus intuition derivatives integrals','Visual intuition for what derivatives and integrals really mean.'],
+['3b1b-la','Essence of Linear Algebra','3Blue1Brown','https://www.3blue1brown.com/topics/linear-algebra','Mathematics','Intermediate','Free','Video','linear algebra vectors matrices engineering','Vectors, matrices and determinants made visual.'],
+['nptel-em1','Engineering Mathematics I','NPTEL · IIT Kharagpur','https://nptel.ac.in/courses/111105121','Mathematics','Intermediate','Free (cert. exam paid)','Course','engineering first year calculus iit','Core first-year engineering maths from IIT Kharagpur.'],
+['nptel','NPTEL engineering courses','NPTEL · IITs & IISc','https://nptel.ac.in','Engineering','Intermediate','Free (cert. exam paid)','Course','engineering mechanics electrical computer iit india','Huge free library of IIT/IISc lecture courses.'],
+['mitocw','MIT OpenCourseWare','MIT','https://ocw.mit.edu','Engineering','Advanced','Free','Course','university engineering physics maths problem sets','Full MIT course materials: lectures, notes and problem sets.'],
+['phet','PhET interactive simulations','University of Colorado Boulder','https://phet.colorado.edu','Physics','Beginner','Free','Tool','simulation lab circuits forces','Play with physics and chemistry simulations to build intuition.'],
+['chemlib','Chemistry LibreTexts','LibreTexts','https://chem.libretexts.org','Chemistry','Intermediate','Free','Textbook','chemistry university general organic','Free open chemistry textbooks at university level.'],
+['cs50','CS50x: Introduction to Computer Science','Harvard University','https://cs50.harvard.edu/x/','Computer Science','Beginner','Free','Course','programming c python algorithms','The famous intro CS course with weekly problem sets.'],
+['fcc','freeCodeCamp','freeCodeCamp','https://www.freecodecamp.org','Computer Science','Beginner','Free','Course','programming web python javascript','Free hands-on coding curriculum with certifications.'],
+['pydocs','The Python Tutorial','Python.org','https://docs.python.org/3/tutorial/','Computer Science','Beginner','Free','Textbook','python programming','Official, concise Python tutorial.'],
+['dw','DW Learn German (A1-C1 + placement test)','Deutsche Welle','https://learngerman.dw.com','German','All levels','Free','Course','germany language a1 a2 b1 b2 nicos weg','Free courses for every CEFR level, with a placement test.'],
+['goethe-ex','Goethe-Institut free German exercises','Goethe-Institut','https://www.goethe.de/ins/de/en/kur/ueb/ele.html','German','All levels','Free','Practice','germany language pronunciation a1 b1','Free exercises, pronunciation trainer and community practice.'],
+['goethe','Goethe-Zertifikat exams','Goethe-Institut','https://www.goethe.de','German','All levels','Paid exam','Official','germany certificate a1 b1 b2 c1','Official German certificates recognised by universities.'],
+['easyger','Easy German','Easy German (YouTube)','https://www.youtube.com/@EasyGerman','German','Intermediate','Free','Video','listening street interviews b1','Real street conversations with subtitles for listening practice.'],
+['ielts','IELTS official site','IELTS','https://ielts.org','English','Intermediate','Paid exam','Official','english admissions test','Book the test and get official practice material.'],
+['bclearn','LearnEnglish','British Council','https://learnenglish.britishcouncil.org','English','All levels','Free','Practice','english grammar ielts','Free grammar, listening and reading practice.'],
+['aps','APS India: certificate for studying in Germany','APS India','https://aps-india.de/','Admissions','-','Paid','Official','germany india visa verification','Mandatory document verification for Indian applicants to German universities and the student visa.'],
+['aps-check','APS India document checklists','APS India','https://aps-india.de/checklists/','Admissions','-','Free','Official','germany india documents','Which documents you need for your APS procedure.'],
+['daad-sch','DAAD scholarship database','DAAD','https://www2.daad.de/deutschland/stipendium/datenbank/en/21148-scholarship-database/','Admissions','-','Free','Official','germany scholarship funding','Search DAAD and other scholarships for study in Germany.'],
+['daad-prog','DAAD International Programmes search','DAAD','https://www2.daad.de/deutschland/studienangebote/international-programmes/en/','Admissions','-','Free','Official','germany bachelor english taught engineering','Find English-taught and international degree programmes.'],
+['uniassist','uni-assist application portal','uni-assist','https://www.uni-assist.de','Admissions','-','Paid','Official','germany application documents','The application service many German universities use for international students.'],
+['stk-hd','Studienkolleg T-course: subjects','Heidelberg University','https://isz.uni-heidelberg.de/en/studienkolleg/core-course-t','Studienkolleg','-','Free','Official','studienkolleg t-kurs german maths physics chemistry computer science','T-course teaches German, Maths, Physics and Chemistry or Computer Science.'],
+['stk-tud','FSP-T sample papers (German, Maths, Physics)','TU Darmstadt','https://www.stk.tu-darmstadt.de/schwerpunktkurse_stk/tkurs_stk/feststellungspruefungt_stk/index.en.jsp','Studienkolleg','Intermediate','Free','Practice','studienkolleg feststellungsprüfung past paper','Real sample papers for the T-course final exam.'],
+['stk-fu','Assessment-exam test examples','FU Berlin','https://fu-berlin.de/en/sites/studienkolleg/musterklausuren/index.html','Studienkolleg','Intermediate','Free','Practice','studienkolleg sample tests mathematik physik','Sample tests per subject (in German).'],
+['stk-kit','T-course entrance test (maths + German)','KIT Karlsruhe','https://www.stk.kit.edu/english/1629.php','Studienkolleg','Intermediate','Free','Official','studienkolleg aufnahmetest entrance','What the one-hour maths and German entrance tests cover.'],
+['stk-htwg','Studienkolleg admission test prep','HTWG Konstanz','https://www.htwg-konstanz.de/en/academics/center-for-international-students-konstanz/exams/admission-test-studienkolleg','Studienkolleg','Intermediate','Free','Practice','studienkolleg admission test maths physics german b1','Preparation material; German at B1 is expected.'],
+['testas','TestAS aptitude test','g.a.s.t.','https://www.testas.de','Admissions','Intermediate','Paid exam','Official','germany aptitude test engineering module','Standardised aptitude test some German universities ask for.'],
+['anki','Anki flashcards','AnkiWeb','https://apps.ankiweb.net','Study skills','All levels','Free','Tool','memory spaced repetition vocabulary','Spaced-repetition flashcards for formulas and vocabulary.'],
+['desmos','Desmos graphing calculator','Desmos','https://www.desmos.com/calculator','Mathematics','All levels','Free','Tool','graphs functions calculus','See any function as a graph instantly.'],
+['wolfram','WolframAlpha','Wolfram','https://www.wolframalpha.com','Mathematics','All levels','Free','Tool','check answers integrals equations','Check answers and step-by-step solutions.'],
+['coursera','Coursera','Coursera','https://www.coursera.org','Engineering','All levels','Free to audit','Course','university courses certificates','University courses; most can be audited free.'],
+['edx','edX','edX','https://www.edx.org','Engineering','All levels','Free to audit','Course','university courses mit harvard','MIT, Harvard and other university courses.'],
+['swayam','SWAYAM','Government of India','https://swayam.gov.in','Engineering','All levels','Free','Course','india university courses nptel','India\'s national course platform, includes NPTEL.']
+].map(a=>({id:a[0],title:a[1],provider:a[2],url:a[3],subject:a[4],level:a[5],cost:a[6],type:a[7],tags:a[8],desc:a[9]}));
+const catById=id=>CAT.find(c=>c.id===id);
+function searchCat(q,subject){
+ const words=String(q||'').toLowerCase().split(/\W+/).filter(w=>w.length>1);
+ return CAT.map(c=>{const hay=(c.title+' '+c.provider+' '+c.subject+' '+c.tags+' '+c.desc).toLowerCase();let s=0;words.forEach(w=>{if(hay.includes(w))s+=c.tags.includes(w)?2:1});if(subject&&c.subject.toLowerCase().includes(String(subject).toLowerCase()))s+=2;return [s,c]}).filter(x=>x[0]>0||(!words.length&&!subject)).sort((a,b)=>b[0]-a[0]).slice(0,8).map(x=>{const c=x[1];return {id:c.id,title:c.title,provider:c.provider,subject:c.subject,level:c.level,cost:c.cost,type:c.type,desc:c.desc}});
+}
+
+/* ================= store ================= */
+let S=null,REF=null,saveT=null,saveChain=Promise.resolve(),VIEW='flow',W=null,CHAT=[],LIBF={q:'',subj:'',cost:'',type:'',sort:'rank'};
+const LSK='studycraft_v1';
+const tmo=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
+function unwrap(r){if(!r)return null;if(typeof r.data==='function')return r.data();if(r.data&&typeof r.data==='object')return r.data;return r}
+async function loadStore(){
+ let cloud=null,local=null;
+ try{const l=localStorage.getItem(LSK);if(l)local=JSON.parse(l)}catch(e){}
+ try{if(window.claude&&claude.use){const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);
+  if(db&&user){const id=await user.id();if(id){REF=db.collection('data/users/'+id).doc('state');const d=unwrap(await tmo(REF.get(),10000));if(d&&d.json)cloud=JSON.parse(d.json)}}}}catch(e){console.warn('cloud load',e)}
+ if(cloud&&local)return (local.saved||0)>(cloud.saved||0)?local:cloud;
+ return cloud||local;
+}
+function save(now){
+ if(!S)return;clearTimeout(saveT);checkAdv();
+ const go=()=>{S.saved=Date.now();if(S.log.length>3000)S.log=S.log.slice(-3000);const old=addDays(dkey(),-90);Object.keys(S.days).forEach(k=>{if(k<old)delete S.days[k]});if(S.events.length>80)S.events=S.events.slice(-80);
+  const json=JSON.stringify(S);try{localStorage.setItem(LSK,json)}catch(e){}
+  if(REF)saveChain=saveChain.then(()=>REF.set({json})).catch(e=>console.warn('cloud save',e))};
+ if(now)go();else saveT=setTimeout(go,700);
+}
+function migrate(s){
+ if(!s||!s.profile)return null;
+ if(!s.v||s.v<2){PIECES.forEach(([k])=>{if(s.armor[k].t>=1)s.armor[k].t++});s.v=2}
+ s.theme=s.theme||'dappled';s.skin=s.skin||'student';s.intent=s.intent||'';s.adv=s.adv||{};s.maps=s.maps||[];s.plan=s.plan||null;s.rank=s.rank||null;
+ s.chat=s.chat||[];s.factor=Object.assign({learn:1,practice:1,revise:1,test:1,task:1},s.factor);Object.values(s.days||{}).forEach(d=>{if(d.planned===undefined)d.planned=true});s.mem=s.mem||[];s.lessons=s.lessons||null;s.busy=s.busy||{};s.notion=s.notion||{logs:{}};s.notion.logs=s.notion.logs||{};
+ s.inv=Object.assign({dia:0,eme:0,lap:0,xp:0,ingot:0,cu:0,bed:0},s.inv);s.brk=s.brk||null;s.pinned=s.pinned||[];
+ return s;
+}
+function newState(d){
+ const ar=()=>({t:0,prot:0,fort:0});
+ return migrate({v:2,created:dkey(),saved:0,
+  profile:{name:d.name||'Player',course:d.course||'',hours:+d.hours||4,start:+d.start||7,end:+d.end||22,pref:d.pref||'morning',block:+d.block||45,sound:true},
+  intent:d.intent||'',theme:d.theme||'dappled',skin:d.skin||'student',
+  subjects:d.subjects,goals:d.goals,days:{},
+  inv:{dia:3,eme:0,lap:2,xp:0,ingot:0,cu:2,bed:1},
+  armor:{helmet:ar(),chest:ar(),legs:ar(),boots:ar()},
+  log:[],events:[],streak:0,factor:{learn:1,practice:1,revise:1,test:1},active:null});
+}
+const subById=id=>S.subjects.find(s=>s.id===id);
+const topById=(s,id)=>s&&s.topics.find(t=>t.id===id);
+const lvl=()=>Math.floor(S.inv.xp/60);
+const today=()=>S.days[dkey()];
+function evt(text){S.events.push({d:dkey(),text})}
+function subStale(s){const l=s.topics.map(t=>t.last).filter(Boolean).sort();const k=dkey();return l.length?daysBetween(l[l.length-1],k):daysBetween(S.created,k)}
+const OX=[['Fresh','#e07a4a'],['Exposed','#c98b62'],['Weathered','#6fa58a'],['Oxidized','#4fc3a8']];
+const oxStage=d=>d<=2?0:d<=5?1:d<=9?2:3;
+function lastStudyDays(){const l=S.log.length?S.log[S.log.length-1].e:null;return l?daysBetween(dkey(new Date(l)),dkey()):99}
+
+/* ================= advancements ================= */
+const ADV=[
+ ['first','Getting an Upgrade','Complete your first quest',s=>all(s).some(t=>t.status==='done')],
+ ['five','Monster Hunter','Complete 5 quests',s=>all(s).filter(t=>t.status==='done').length>=5],
+ ['fifty','Adventuring Time','Complete 50 quests',s=>all(s).filter(t=>t.status==='done').length>=50],
+ ['perfect','Sweet Dreams','Finish every quest in a day',s=>Object.values(s.days).some(d=>d.perfect)],
+ ['streak3','Hot Stuff','3-day perfect streak',s=>s.streak>=3],
+ ['streak7','The Next Generation','7-day perfect streak',s=>s.streak>=7],
+ ['hours10','Stone Age','10 hours focused',s=>s.inv.xp>=600||totalMin(s)>=600],
+ ['hours50','Isn\'t It Iron Pick','50 hours focused',s=>totalMin(s)>=3000],
+ ['copper','Copper Age','Craft a copper piece',s=>PIECES.some(([k])=>s.armor[k].t>=1)],
+ ['diamond','Cover Me with Diamonds','Craft a diamond piece',s=>PIECES.some(([k])=>s.armor[k].t>=4)],
+ ['nether','Cover Me in Debris','Craft a netherite piece',s=>PIECES.some(([k])=>s.armor[k].t>=5)],
+ ['enchant','Enchanter','Enchant any armor',s=>PIECES.some(([k])=>s.armor[k].prot||s.armor[k].fort)],
+ ['master','Librarian','Master 5 topics',s=>s.subjects.reduce((a,x)=>a+x.topics.filter(t=>t.status==='mastered').length,0)>=5],
+ ['test','Target Practice','Complete a mock test',s=>all(s).some(t=>t.type==='test'&&t.status==='done')],
+ ['early','Early Bird','Focus before 7 am',s=>s.log.some(l=>new Date(l.s).getHours()<7)],
+ ['owl','Night Owl','Focus after 11 pm',s=>s.log.some(l=>new Date(l.s).getHours()>=23)],
+ ['helper','Golem Whisperer','Get a plan from the Copper Helper',s=>!!s.plan],
+ ['map','Cartographer','Find an explorer map',s=>s.maps.length>0],
+ ['memory','Enchanted Book','Record 10 memories',s=>s.mem.length>=10],
+ ['lock','Locked In','Five focus-5 quests',s=>all(s).filter(t=>t.focus===5&&t.status==='done').length>=5]
+];
+const all=s=>Object.values(s.days).flatMap(d=>d.tasks);
+const totalMin=s=>s.log.reduce((a,l)=>a+(l.e-l.s)/6e4,0);
+function checkAdv(){if(!S)return;ADV.forEach(([id,t,d,f])=>{if(!S.adv[id]){let ok=false;try{ok=f(S)}catch(e){}if(ok){S.adv[id]=dkey();S.inv.xp+=20;setTimeout(()=>{beep(SND.adv);toast('Advancement made!',t,'advt',IC.book2(28))},400)}}})}
+
+/* ================= efficiency ================= */
+function hourStats(){const H=Array.from({length:24},()=>({m:0,w:0}));S.log.forEach(L=>{let s=L.s;const f=L.f??3;while(s<L.e){const d=new Date(s);const nx=new Date(d);nx.setMinutes(60,0,0);const e=Math.min(L.e,+nx);const m=(e-s)/6e4;H[d.getHours()].m+=m;H[d.getHours()].w+=m*f;s=e}});return H}
+function effCurve(){const P=S.profile,H=hourStats(),tot=H.reduce((a,b)=>a+b.m,0);const peak={morning:9,afternoon:14,night:21}[P.pref]??10;const maxM=Math.max(1,...H.map(h=>h.m));
+ return H.map((h,i)=>{const prior=.45+.35*Math.max(0,1-Math.abs(i-peak)/5);if(tot<120||h.m<10)return prior;const real=(h.w/h.m)/5*.75+.25*Math.min(1,h.m/maxM);const k=Math.min(1,h.m/90);return prior*(1-k)+real*k})}
+
+/* ================= planner ================= */
+const BASE={learn:1,practice:.85,revise:25,test:60};
+function dur(type){const P=S.profile;const b=type==='revise'||type==='test'?BASE[type]:P.block*BASE[type];return r5(b*clamp(S.factor[type]||1,.7,1.6))}
+function avgConf(sub){const t=sub.topics.filter(t=>t.status!=='new');return t.length?t.reduce((a,b)=>a+b.conf,0)/t.length:null}
+function subjectWeight(sub,k){
+ const gs=S.goals.filter(g=>!g.done&&g.subj===sub.id&&g.deadline);const gd=gs.length?Math.min(...gs.map(g=>daysBetween(k,g.deadline))):null;
+ const urg=gd==null?1:clamp(1+20/Math.max(gd,2),1,5);const sc=sub.score??avgConf(sub)??55;const weak=1+(100-sc)/150;
+ const pri=({high:1.3,medium:1,low:.8}[sub.priority]||1)*(1+Math.min(recentMistakes(sub.id),5)*.04);
+ return urg*weak*(1+Math.min(subStale(sub),7)/10)*(S.goals.some(g=>!g.done&&g.subj===sub.id)?1.15:1)*pri;
+}
+function makeTask(c){const sub=c.sub,tp=c.tp,type=c.type;const title=type==='test'?`Mock test: ${sub.name}`:tp?`${TYPEN[type]}: ${tp.name}`:`Study session: ${sub.name}`;
+ return {id:uid(),sub:sub.id,top:tp?tp.id:null,type,title,mins:c.mins||dur(type),slot:null,how:howTo(type,sub,tp),src:srcFor(type,sub),status:'todo',spent:0,focus:null,output:'',score:null,tip:''}}
+function plan(k,keep=[]){
+ const P=S.profile;let left=P.hours*60-keep.reduce((a,t)=>a+(t.status==='done'?t.mins:Math.max(t.mins,(t.spent||0)/6e4)),0);
+ const keepTop=new Set(keep.map(t=>t.top).filter(Boolean));let C=[];
+ S.subjects.forEach(sub=>{const w=subjectWeight(sub,k);
+  sub.topics.forEach(tp=>{if(tp.status!=='new'&&tp.next&&tp.next<=k)C.push({type:'revise',sub,tp,score:w*(1.5+Math.min(daysBetween(tp.next,k),7)*.12)})});
+  sub.topics.filter(t=>t.status==='learning').slice(0,2).forEach(tp=>C.push({type:'practice',sub,tp,score:w*1.25*(1+(60-tp.conf)/200)}));
+  const nw=sub.topics.filter(t=>t.status==='new');if(nw[0])C.push({type:'learn',sub,tp:nw[0],score:w*1.1});if(nw[1])C.push({type:'learn',sub,tp:nw[1],score:w*.6});
+  if(new Date(k+'T12:00:00').getDay()===0&&sub.topics.filter(t=>t.status!=='new').length>=2)C.push({type:'test',sub,tp:null,score:w*1.35});
+  if(!sub.topics.length)C.push({type:'learn',sub,tp:null,score:w*.9})});
+ C=C.filter(c=>!c.tp||!keepTop.has(c.tp.id));
+ const best={};C.forEach(c=>{const key=c.tp?c.tp.id:c.sub.id+c.type;if(!best[key]||best[key].score<c.score)best[key]=c});C=Object.values(best);
+ const cnt={};keep.forEach(t=>cnt[t.sub]=(cnt[t.sub]||0)+1);const out=[];
+ while(left>=15&&C.length&&out.length+keep.length<9){C.forEach(c=>c.e=c.score*Math.pow(.55,cnt[c.sub.id]||0));C.sort((a,b)=>b.e-a.e);
+  const i=C.findIndex(c=>dur(c.type)<=left+10);if(i<0)break;const c=C.splice(i,1)[0];c.mins=Math.min(dur(c.type),r5(left+10));out.push(makeTask(c));left-=c.mins;cnt[c.sub.id]=(cnt[c.sub.id]||0)+1}
+ assignSlots(out,k,keep);
+ const bySub={};out.filter(t=>t.type==='learn'&&t.slot!=null).forEach(t=>(bySub[t.sub]=bySub[t.sub]||[]).push(t));
+ Object.values(bySub).forEach(ts=>{const sl=ts.map(t=>t.slot).sort((a,b)=>a-b);ts.forEach((t,i)=>t.slot=sl[i])});
+ return keep.concat(out).sort((a,b)=>(a.slot??9999)-(b.slot??9999));
+}
+const DIFF={test:4,learn:3,practice:2,revise:1,task:2};
+function assignSlots(tasks,k,fixed){
+ const P=S.profile,eff=effCurve();let st=P.start*60,en=P.end*60;if(en<=st)en=st+12*60;
+ if(k===dkey())st=Math.max(st,Math.ceil((nowMin()+5)/15)*15);
+ const occ=fixed.filter(t=>t.slot!=null&&t.status!=='done').map(t=>[t.slot,t.slot+t.mins+10]).concat((S.busy&&S.busy[k]||[]).map(b=>[b.s-10,b.e+10]));
+ [...tasks].sort((a,b)=>DIFF[b.type]-DIFF[a.type]||b.mins-a.mins).forEach(t=>{let bS=null,bV=-1;
+  for(let s=st;s+t.mins<=en;s+=15){if(occ.some(([a,b])=>s<b&&s+t.mins+10>a))continue;let v=0,n=0;for(let m=s;m<s+t.mins;m+=15){v+=eff[Math.floor(m/60)%24];n++}v=v/n-(s-st)/60*.002;if(v>bV){bV=v;bS=s}}
+  t.slot=bS;if(bS!=null)occ.push([bS,bS+t.mins+10])});
+}
+function howTo(type,sub,tp){const T=tp?tp.name:sub.name;return ({
+ learn:`1. Skim ${T} first (headings, diagrams, summary) - 3 min.\n2. Study it in focused blocks; write short notes in your own words.\n3. Close everything and write the 5 key ideas from memory (active recall).\n4. Re-check the source and mark what you missed - that's your revision list.\n5. Try 3 easy questions to confirm it clicked.`,
+ practice:`1. Pick 15-20 questions on ${T}, easy to hard.\n2. Set the timer, solve without notes.\n3. Check immediately; log your score when you stop.\n4. Redo every wrong question from scratch - no peeking.\n5. Note the mistake type (concept / careless / time).`,
+ revise:`1. Blank page: write everything you remember about ${T} (10 min, no notes).\n2. Open your notes and fill gaps in a different colour.\n3. Make 3 flashcards from the gaps.\n4. Finish with 3 quick questions.`,
+ test:`1. Mixed timed test on ${sub.name}: past paper or chapter-end exercises.\n2. Exam conditions - no notes, no phone.\n3. Mark it honestly and enter the % when you stop.\n4. List the 3 weakest topics; the planner pushes them up.`})[type]}
+function srcFor(type,sub){const own=(sub.sources||'').trim();
+ const def={learn:'Your textbook chapter + one lecture video on it (try the Library tab for free courses)',practice:'Textbook exercises, then past-year or sample-paper questions',revise:'Your own notes and flashcards',test:'A past-year paper or a full chapter-end exercise set'}[type];
+ if(!own)return def;const parts=own.split(/[;,\n]/).map(s=>s.trim()).filter(Boolean);
+ return ({learn:parts[0],practice:parts[1]||parts[0],revise:'Your notes'+(parts[0]?' + '+parts[0]:''),test:parts[parts.length-1]||parts[0]})[type]+(type==='practice'||type==='test'?' - questions section':'')}
+
+/* ================= day roll / penalties ================= */
+function hit(reason){
+ const ps=PIECES.map(p=>p[0]).filter(k=>S.armor[k].t>0||S.armor[k].prot>0);
+ if(!ps.length){if(S.inv.dia>0){S.inv.dia--;evt(`${reason} - lost 1 diamond`)}else evt(`${reason} - nothing left to lose`);return}
+ ps.sort((a,b)=>(S.armor[b].t*4+S.armor[b].prot)-(S.armor[a].t*4+S.armor[a].prot));
+ const k=ps[0],a=S.armor[k],nm=PIECES.find(p=>p[0]===k)[1];
+ if(a.prot>0){a.prot--;evt(`${reason} - Protection on your ${nm} absorbed it`)}else{a.t--;evt(`${reason} - ${nm} cracked ${TIERS[a.t+1][0]} → ${TIERS[a.t][0]}`)}
+}
+function closeActive(){const A=S.active;if(!A)return;const t=(S.days[A.day]?.tasks||[]).find(x=>x.id===A.id);const e=Date.now();
+ if(t){t.spent+=e-A.s;if(e-A.s>30000)S.log.push({id:t.id,sub:t.sub,type:t.type,s:A.s,e,f:null})}S.active=null}
+function rollDay(){
+ const k=dkey();let pen=0;if(S.active&&S.active.day!==k)closeActive();
+ Object.keys(S.days).sort().forEach(d=>{const day=S.days[d];if(d>=k||day.settled)return;
+  if(!day.rest)day.tasks.forEach(t=>{if(t.status==='todo'||t.status==='doing'){t.status='missed';hit(`Missed "${t.title}" (${d})`);pen++}});
+  if(!day.perfect&&!day.rest)S.streak=0;day.settled=true});
+ if(!S.days[k]&&S.subjects.length)S.days[k]={tasks:plan(k),settled:false,planned:true};
+ else if(S.days[k]&&!S.days[k].planned&&S.subjects.length){S.days[k].tasks=plan(k,S.days[k].tasks);S.days[k].planned=true}
+ if(pen){beep(SND.bad);setTimeout(()=>toast('Armor damaged',`${pen} unfinished quest${pen>1?'s':''} cracked your armor. See the Armory.`),600)}
+ save();
+}
+
+/* ================= timer & finishing ================= */
+const findTask=id=>{for(const k in S.days){const t=S.days[k].tasks.find(x=>x.id===id);if(t)return [t,k]}return [null,null]};
+function startTask(id){const [t,k]=findTask(id);if(!t)return;if(S.active&&S.active.id!==id)closeActive();S.brk=null;S.active={id,day:k,s:Date.now()};if(t.status==='todo')t.status='doing';beep(SND.start);save();render()}
+function pauseTask(){closeActive();beep(SND.click);save();render()}
+function stopTask(id){closeActive();save();render();openFinish(id)}
+const spentOf=t=>t.spent+(S.active&&S.active.id===t.id?Date.now()-S.active.s:0);
+function openFinish(id){const [t]=findTask(id);if(!t)return;const sub=subById(t.sub),tp=topById(sub,t.top);
+ modal(`<div class="panel modal"><h2>Quest report</h2><p><b>${esc(t.title)}</b><br><span class="muted">Time logged: ${fmtMin(t.spent/6e4)} of ${t.mins}m planned</span></p>
+ <label for="fFocus">How focused were you?</label><select id="fFocus"><option value="5">5 - Locked in</option><option value="4" selected>4 - Good</option><option value="3">3 - Okay</option><option value="2">2 - Distracted</option><option value="1">1 - Barely worked</option></select>
+ <label for="fOut">What did you produce? (pages, questions, notes)</label><input id="fOut" placeholder="e.g. 18 questions, 2 pages of notes" value="${esc(t.output)}">
+ <label for="fScore">Score % (optional - practice and tests)</label><input id="fScore" type="number" min="0" max="100" inputmode="numeric" value="${t.score??''}">
+ ${tp?`<label for="fState">Where is "${esc(tp.name)}" now?</label><select id="fState"><option value="learning">Still learning it</option><option value="understood" selected>I understand it</option><option value="mastered">Mastered - I could teach it</option></select>`:''}
+ <label for="fWrong">What went wrong or slowed you? (optional - goes in your Memory Book)</label><input id="fWrong" placeholder="e.g. kept mixing up sin/cos signs; phone distracted me">
+ <label for="fWorked">What worked? (optional)</label><input id="fWorked" placeholder="e.g. solving 5 easy ones first got me going">
+ <div class="row" style="margin-top:16px"><button class="btn go" data-act="complete" data-id="${t.id}">Complete quest</button><button class="btn" data-act="later" data-id="${t.id}">Save, finish later</button></div></div>`)}
+function readFinish(t){t.focus=+$('#fFocus').value;t.output=$('#fOut').value.trim();const sc=$('#fScore').value;t.score=sc===''?null:clamp(+sc,0,100);t.wrong=$('#fWrong').value.trim();t.worked=$('#fWorked').value.trim();return $('#fState')?$('#fState').value:null}
+function completeTask(id){
+ const [t,k]=findTask(id);if(!t)return;const st=readFinish(t);const sub=subById(t.sub),tp=topById(sub,t.top);const mins=t.spent/6e4;
+ S.log.forEach(L=>{if(L.id===t.id&&L.f==null)L.f=t.focus});memFromTask(t);
+ if(tp){tp.mins+=mins;tp.last=k;if(t.score!=null)tp.conf=Math.round(tp.conf?tp.conf*.5+t.score*.5:t.score);
+  if(t.type==='learn'){tp.status=st==='learning'?'learning':st==='mastered'?'mastered':'done';tp.reviews=0;tp.next=addDays(k,1)}
+  else if(t.type==='practice'){if(st!=='learning'){tp.status=st==='mastered'?'mastered':'done';tp.next=addDays(k,2)}}
+  else if(t.type==='revise'){if(st==='learning'){tp.status='learning';tp.reviews=0;tp.next=addDays(k,1)}else{tp.reviews++;tp.next=addDays(k,[1,3,7,14,30,60][Math.min(tp.reviews,5)]);if(st==='mastered')tp.status='mastered'}}
+  tp.conf=Math.max(tp.conf,st==='mastered'?85:st==='understood'?60:25)}
+ if(t.type==='test'&&t.score!=null&&sub)sub.score=Math.round(sub.score!=null?sub.score*.6+t.score*.4:t.score);
+ if(mins>=5&&S.factor[t.type]!=null){const ratio=clamp(mins/t.mins,.5,2);S.factor[t.type]=+(S.factor[t.type]*.7+ratio*.3).toFixed(3)}
+ const loot=[];const short=mins<Math.min(5,t.mins*.3);let dia=short?1:1+(t.mins>=40?1:0)+(t.focus>=4?1:0)+(t.type==='test'?1:0);
+ const fort=PIECES.reduce((a,[p])=>a+S.armor[p].fort,0);let lucky=false;if(!short&&fort&&Math.random()<fort*.08){dia*=2;lucky=true}
+ const xp=Math.round(Math.min(mins,t.mins*2));S.inv.dia+=dia;S.inv.xp+=xp;loot.push(['dia',dia]);if(xp>0)loot.push(['xp',xp]);
+ if(!short){const cu=1+(t.type==='practice'?1:0);S.inv.cu+=cu;loot.push(['cu',cu])}
+ if(t.focus>=4&&!short){S.inv.lap++;loot.push(['lap',1])}
+ let mapMsg='';if(!short&&Math.random()<.18){const r=searchCat((sub?sub.name:'')+' '+(tp?tp.name:''),sub?sub.name:'').filter(x=>!S.maps.includes(x.id));const m=r[0]||CAT[Math.floor(Math.random()*CAT.length)];if(m&&!S.maps.includes(m.id)){S.maps.push(m.id);loot.push(['map',1]);mapMsg=`Explorer map found in an abandoned camp: "${m.title}". It's pinned in the Library.`}}
+ t.status='done';t.loot=loot;
+ const day=S.days[k];
+ if(k===dkey()&&!day.perfect&&day.tasks.length&&day.tasks.every(x=>x.status==='done')){day.perfect=true;S.streak++;S.inv.eme++;loot.push(['eme',1]);
+  if(S.streak%7===0){S.inv.eme+=3;S.inv.ingot++;loot.push(['eme',3],['ingot',1])}evt(`Perfect day! Streak ${S.streak}`)}
+ save();closeModal();render();
+ chest(loot,short?'Short session - reduced loot. Time it with Start/Stop for full rewards.':lucky?'Fortune doubled your diamonds!':t.title,null,true);
+ if(mapMsg)setTimeout(()=>toast('Map found!',mapMsg,'',IC.map(28)),1500);
+}
+function laterTask(id){const [t]=findTask(id);if(!t)return;readFinish(t);S.log.forEach(L=>{if(L.id===t.id&&L.f==null)L.f=t.focus});memFromTask(t);t.status='doing';save();closeModal();render();toast('Progress saved','Press Resume whenever you continue.')}
+function skipTask(id){const [t]=findTask(id);
+ confirmBox('Skip this quest?',`Skipping "${t.title}" costs 1 diamond now (or an armor crack if you have none). Leaving it unfinished at midnight cracks your armor instead.`,'Skip it',()=>{
+  if(S.active&&S.active.id===id)closeActive();if(S.inv.dia>0){S.inv.dia--;evt(`Skipped "${t.title}" - paid 1 diamond`)}else hit(`Skipped "${t.title}"`);t.status='skipped';save();render()})}
+function useBed(){const d=today();if(!d||d.rest||S.inv.bed<1)return;
+ confirmBox('Sleep in a straw bed?','Today becomes a rest day: unfinished quests won\'t crack your armor and your streak is frozen, not broken. The bed is used up.','Rest today',()=>{S.inv.bed--;d.rest=true;if(S.active)closeActive();d.tasks.forEach(t=>{if(t.status==='todo')t.status='rested'});evt('Slept in a straw bed - rest day');save();render();toast('Rest day','Recover well. The planner picks up tomorrow.','',IC.bed(28))})}
+function startBreak(m){S.brk={until:Date.now()+m*60000,m};save();closeModal();VIEW='quests';render()}
+
+/* ================= shell ================= */
+const VIEWS=[['flow','Flow',w=>IC.cmd(w)],['quests','Today',w=>IC.learn(w)],['chests','Chests',w=>IC.chest(w)],['helper','Copper Helper',w=>IC.golem(w)],['hub','Command Block',w=>IC.task(w)],['library','Library',w=>IC.shelf(w)],['armory','Armory',w=>IC.helm(w)],['stats','Stats',w=>IC.stats(w)],['settings','Settings',w=>IC.gear(w)]];
+const SPLASH=['Now with copper!','Mind the creepers of procrastination!','Revise or crack!','Also try sleeping!','Dappled and dazzling!','100% organic diamonds!','Spaced repetition!','Ask the golem!','Abandoned camps inside!','Cushions included!','Exam-proof armor!'];
+function renderTop(){
+ const T=today()?.tasks||[];const done=T.filter(t=>t.status==='done').length;
+ $('#top').hidden=false;
+ $('#top').innerHTML=`<div class="topin"><div class="who"><div class="logo">Flow<b>Craft</b></div><span class="splash">${esc(SPLASH[new Date().getDate()%SPLASH.length])}</span></div>
+ <div class="row" style="gap:10px"><div class="face">${face(34)}</div><div><div style="font-weight:700;font-size:20px">${esc(S.profile.name)}</div><div class="small" style="opacity:.9">${esc(S.profile.course||THEMES[S.theme].name)}</div></div></div>
+ <nav class="topnav" aria-label="Sections">${VIEWS.map(([v,n,ic])=>`<button class="${VIEW===v?'on':''}" data-view="${v}" aria-current="${VIEW===v?'page':'false'}">${ic(20)}<span>${n}</span></button>`).join('')}</nav>
+ <div class="cur"><span data-tip="Diamonds: craft armor">${IC.dia(24)}${S.inv.dia}</span><span data-tip="Copper ingots: copper armor">${IC.cu(24)}${S.inv.cu}</span><span data-tip="Emeralds: perfect days, trading">${IC.eme(24)}${S.inv.eme}</span><span data-tip="Lapis: enchanting">${IC.lap(24)}${S.inv.lap}</span><span data-tip="Netherite ingots">${IC.ingot(24)}${S.inv.ingot}</span><span data-tip="Straw beds: rest days">${IC.bed(24)}${S.inv.bed}</span></div></div>`;
+ const L=lvl(),pct=(S.inv.xp%60)/60*100;
+ $('#hud').hidden=false;
+ const hearts=Math.max(T.length,1);
+ $('#hud').innerHTML=`<div class="hlabel">${esc(VIEWS.find(v=>v[0]===VIEW)[1])}</div>
+ <div class="hearts" data-tip="Today: ${done}/${T.length} quests">${Array.from({length:Math.min(hearts,10)},(_,i)=>IC.heart(18,i<done)).join('')}</div>
+ <div class="xpbar" data-tip="${S.inv.xp} XP · 1 level per 60 focused minutes"><i style="width:${pct}%"></i><b>${L}</b></div>
+ <nav class="hotbar" aria-label="Sections">${VIEWS.map(([v,n,ic],x)=>`<button class="${VIEW===v?'on':''}" data-view="${v}" aria-label="${n}" data-tip="${n} (${x+1})">${ic(34)}<b>${x+1}</b></button>`).join('')}</nav>`;
+}
+function render(){
+ if(!S){renderWizard();return}
+ renderTop();
+ if(VIEW==='hub'&&HUB.status==null){HUB.status='checking';hubStatus()}
+ const f={flow:vFlow,quests:vQuests,chests:()=>vWeek()+vChests(),helper:vHelper,hub:vHub,library:vLibrary,armory:vArmory,stats:vStats,settings:vSettings}[VIEW];
+ $('#view').innerHTML=f();
+ if(VIEW==='flow'){const c=$('#fchat');if(c)c.scrollTop=c.scrollHeight}
+}
+function modal(html){$('#modal').innerHTML=`<div class="ov" data-act="ovclose">${html}</div>`;const f=$('#modal input,#modal select,#modal textarea,#modal .btn');f&&f.focus()}
+function closeModal(){$('#modal').innerHTML=''}
+function toast(title,msg,cls='',icon=''){const d=document.createElement('div');d.className='toast '+cls;d.innerHTML=`${icon}<div><b>${esc(title)}</b>${esc(msg)}</div>`;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),5500)}
+let confirmCb=null;
+function confirmBox(title,msg,ok,cb){confirmCb=cb;modal(`<div class="panel modal stone"><h2>${esc(title)}</h2><p>${esc(msg)}</p><div class="row" style="margin-top:14px"><button class="btn red" data-act="confok">${esc(ok)}</button><button class="btn" data-act="close">Cancel</button></div></div>`)}
+const CHEST_SVG=`<svg class="chestbig" id="cb" viewBox="0 -4 20 20" width="170" height="170" shape-rendering="crispEdges" aria-hidden="true">
+<g><rect x="1" y="7" width="18" height="9" fill="#2b1a0b"/><rect x="2" y="8" width="16" height="7" fill="#a0692b"/><rect x="2" y="13" width="16" height="2" fill="#7a4e1e"/><rect x="2" y="8" width="16" height="1" fill="#2b1a0b"/></g>
+<g class="lid"><rect x="1" y="2" width="18" height="6" fill="#2b1a0b"/><rect x="2" y="3" width="16" height="4" fill="#b8792f"/><rect x="2" y="3" width="16" height="1" fill="#d4934a"/><rect x="9" y="6" width="2" height="3" fill="#d9d9d9"/><rect x="9" y="8" width="2" height="1" fill="#555"/></g></svg>`;
+function chest(loot,sub,head,offerBreak){
+ beep(SND.chest);
+ modal(`<div class="panel modal gold" style="text-align:center"><h2>${esc(head||'Quest complete!')}</h2><p class="muted">${esc(sub||'')}</p><div class="chestwrap">${CHEST_SVG}</div>
+ <div class="loot">${loot.map(([k,n],i)=>`<div class="slot" style="animation-delay:${.55+i*.15}s" data-tip="${LOOTN[k]||k}">${(IC[k]||IC.dia)(44)}<b>${n}</b></div>`).join('')}</div>
+ <div class="row" style="justify-content:center"><button class="btn go" data-act="close">Collect</button>${offerBreak?`<button class="btn" data-act="brk" data-m="5" style="background:#e86aa8">${IC.cushion(22)} Sit on a cushion · 5-min break</button>`:''}</div></div>`);
+ setTimeout(()=>{const c=$('#cb');c&&c.classList.add('open')},60);
+}
+
+/* ================= view: quests ================= */
+function vQuests(){
+ const k=dkey(),day=today();
+ if(!S.subjects.length)return `<div class="panel empty"><h2>No subjects yet</h2><p>Add subjects in Chests, or ask the Copper Helper to design your path.</p><div class="row" style="justify-content:center"><button class="btn go" data-view="chests">Open Chests</button><button class="btn cu" data-view="helper">Ask the Copper Helper</button></div></div>`;
+ const T=day?day.tasks:[];const done=T.filter(t=>t.status==='done').length;
+ const plannedM=T.reduce((a,t)=>a+t.mins,0),spentM=T.reduce((a,t)=>a+spentOf(t),0)/6e4;
+ const A=S.active&&findTask(S.active.id)[0];const nm=nowMin();const next=T.find(t=>t.status==='todo'&&t.slot!=null&&t.slot+t.mins>nm);
+ let h=`<div class="vtitle"><div><h1>${esc(dayName(k))}</h1><p>${done}/${T.length} quests · ${fmtMin(spentM)} focused of ${fmtMin(plannedM)} planned${S.streak?` · ${S.streak}-day streak`:''}${day&&day.rest?' · Rest day':''}</p><div class="qbar" style="max-width:520px"><i style="width:${T.length?done/T.length*100:0}%"></i></div></div>
+ <div class="row"><button class="btn" data-act="replan" data-tip="Re-choose all unstarted quests">Re-roll plan</button><button class="btn go" data-act="addq">+ Quest</button>${S.inv.bed>0&&day&&!day.rest?`<button class="btn gold" data-act="bed">${IC.bed(22)} Rest day</button>`:''}</div></div>`;
+ if(S.brk&&S.brk.until>Date.now())h+=`<div class="panel dark timer" style="border-image-source:var(--t-amethyst)"><div><h3>${IC.cushion(22)} On a cushion · break</h3><div class="big" id="bbig" style="color:#ffc4e1">${fmtDur(S.brk.until-Date.now())}</div><div class="small muted">Stand up, water, stretch. No phone scrolling.</div></div><div class="row"><button class="btn" data-act="endbrk">Get up</button></div></div>`;
+ if(A){const sp=spentOf(A);h+=`<div class="panel dark timer"><div><h3>In progress · ${esc(subById(A.sub)?.name||'')}</h3><div style="font-size:24px;font-weight:700">${esc(A.title)}</div><div class="big" id="tbig">${fmtDur(sp)}</div><div class="tprog"><i id="tprog" style="width:${clamp(sp/6e4/A.mins*100,0,100)}%"></i></div><div class="small muted" style="margin-top:6px">Planned ${A.mins}m · started ${new Date(S.active.s).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</div></div>
+ <div class="row"><button class="btn" data-act="pause">Pause</button><button class="btn red" data-act="stop" data-id="${A.id}">Stop</button></div></div>`}
+ else if(next)h+=`<div class="panel dark timer"><div><h3>Next up · ${fmtT(next.slot)}</h3><div style="font-size:24px;font-weight:700">${esc(next.title)}</div><div class="small muted">${next.mins} minutes · ${esc(subById(next.sub)?.name||'')}</div></div><div class="row"><button class="btn go" data-act="start" data-id="${next.id}">Start</button></div></div>`;
+ if(S.lessons&&S.lessons.items.length)h+=`<div class="panel gold" style="margin-bottom:14px"><div class="row" style="flex-wrap:nowrap">${IC.book2(30)}<div><b>Lesson from your past</b><div>${esc(S.lessons.items[new Date().getDate()%S.lessons.items.length])}</div></div></div></div>`;
+ if(!T.length)h+=`<div class="panel empty"><p>Nothing planned today. Add a quest, or add more topics in Chests.</p></div>`;
+ return h+`<div class="quests">${T.map(qCard).join('')}</div>`;
+}
+function qCard(t){
+ const sub=subById(t.sub);const act=S.active&&S.active.id===t.id;const sp=spentOf(t);
+ const icon=t.status==='done'?IC.check(40):IC[t.type](40);let acts='';
+ if(t.status==='todo'||t.status==='doing')acts=act?`<button class="btn" data-act="pause">Pause</button><button class="btn red" data-act="stop" data-id="${t.id}">Stop</button>`
+  :`<button class="btn go" data-act="start" data-id="${t.id}">${t.spent?'Resume':'Start'}</button>${t.spent?`<button class="btn" data-act="finish" data-id="${t.id}">Finish</button>`:''}<button class="btn sm" data-act="skip" data-id="${t.id}" data-tip="Costs 1 diamond">Skip</button>`;
+ else if(t.status==='done')acts=`<span class="row" style="gap:8px">${(t.loot||[]).map(([k,n])=>`<span class="row" style="gap:3px">${(IC[k]||IC.dia)(20)}${n}</span>`).join('')}</span>`;
+ else acts=`<span class="chip">${t.status}</span>`;
+ return `<div class="panel q ${t.type} ${t.status}${act?' doing':''}"><div class="slot">${icon}</div><div><div class="tt">${esc(t.title)}</div>
+ <div class="meta"><span class="chip ${t.type}">${TYPEN[t.type]}</span><b>${fmtT(t.slot)}</b><span>${t.mins}m</span>${sp>0?`<span>${fmtMin(sp/6e4)} done</span>`:''}<span>${esc(sub?sub.name:'')}</span>${t.focus?`<span>focus ${t.focus}/5</span>`:''}${t.score!=null?`<span>${t.score}%</span>`:''}</div></div>
+ <div class="acts">${acts}</div>
+ <details><summary>How to do it · where from</summary><div class="how">${esc(t.how)}\n\nSource: ${esc(t.src)}${t.output?`\n\nYour output: ${esc(t.output)}`:''}</div>
+ ${t.tip?`<div class="msg ai" style="max-width:100%;margin-top:8px">${esc(t.tip)}</div>`:''}<div class="row" style="margin-top:8px"><button class="btn sm cu" data-act="tip" data-id="${t.id}">${IC.golem(18)} Ask the Helper about this topic</button><button class="btn sm" data-act="delq" data-id="${t.id}">Remove</button></div></details></div>`;
+}
+function addQuest(date){if(!S.subjects.length){VIEW='flow';render();toast('Tell Flow','Type or say the task and Flow will place it.');return}
+ modal(`<div class="panel modal"><h2>New quest · ${esc(dayLabel(date||dkey()))}</h2><input type="hidden" id="nqDate" value="${esc(date||dkey())}"><label for="nqS">Subject</label><select id="nqS">${S.subjects.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>
+ <label for="nqT">Topic</label><select id="nqT"></select><label for="nqN">…or a new topic</label><input id="nqN" placeholder="Leave empty to use the topic above">
+ <div class="grid2"><div><label for="nqY">Type</label><select id="nqY">${Object.keys(TYPEN).map(k=>`<option value="${k}">${TYPEN[k]}</option>`).join('')}</select></div><div><label for="nqM">Minutes</label><input id="nqM" type="number" min="5" max="300" value="${S.profile.block}"></div></div>
+ <div class="row" style="margin-top:16px"><button class="btn go" data-act="addqok">Add quest</button><button class="btn" data-act="close">Cancel</button></div></div>`);
+ const fill=()=>{const s=subById($('#nqS').value);$('#nqT').innerHTML=`<option value="">(whole subject)</option>`+s.topics.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('')};$('#nqS').onchange=fill;fill();
+}
+function addQuestOk(){const sub=subById($('#nqS').value);let tp=topById(sub,$('#nqT').value);const nn=$('#nqN').value.trim();if(nn){tp=newTopic(nn);sub.topics.push(tp)}
+ const k=$('#nqDate').value||dkey();const t=newTaskObj({sub,tp,type:$('#nqY').value,mins:r5(+$('#nqM').value||30)});placeTask(t,k,null);save();closeModal();render()}
+function replan(){const k=dkey(),day=S.days[k];const keep=day?day.tasks.filter(t=>t.status!=='todo'||t.spent>0||t.user):[];S.days[k]=Object.assign(day||{},{tasks:plan(k,keep),settled:false,planned:true});save();render();toast('Plan rebuilt','Unstarted quests re-chosen from goals, reviews and your best hours.')}
+
+/* ================= Claude access ================= */
+const AI_LS='flowcraft_ai';
+function aiCfg(){try{return JSON.parse(localStorage.getItem(AI_LS)||'null')}catch(e){return null}}
+function freeSample(){const c=aiCfg();if(!c||!c.url)return null;
+ const call=async body=>{let r;try{r=await fetch(c.url,{method:'POST',headers:{'content-type':'application/json','x-flowcraft-pass':c.pass||''},body:JSON.stringify(body)})}catch(e){throw {code:'network',message:'Could not reach your AI proxy'}}
+  if(r.status===429)throw {code:'rate_limited'};if(!r.ok){let m='';try{m=(await r.json()).error}catch(e){}throw {code:'http_'+r.status,message:typeof m==='string'?m:JSON.stringify(m)}}return r.json()};
+ return async(input,opts={})=>{const msgs=typeof input==='string'?[{role:'user',content:input}]:input.map(m=>({role:m.role,content:String(m.content||'')}));
+  const tools=(opts.tools||[]).map(t=>({type:'function',function:{name:t.name,description:t.description,parameters:t.inputSchema||{type:'object',properties:{}}}}));
+  for(let i=0;i<8;i++){const body={messages:msgs,max_tokens:1800,temperature:.3};if(tools.length)body.tools=tools;
+   const j=await call(body);const m=j&&j.choices&&j.choices[0]&&j.choices[0].message;if(!m)throw {code:'bad_response'};
+   if(m.tool_calls&&m.tool_calls.length){msgs.push({role:'assistant',content:m.content||'',tool_calls:m.tool_calls});
+    for(const tc of m.tool_calls){const t=(opts.tools||[]).find(x=>x.name===tc.function.name);let out;
+     try{const args=JSON.parse(tc.function.arguments||'{}');out=t?await t.execute(args):'unknown tool'}catch(e){out='error: '+(e&&e.message||e)}
+     msgs.push({role:'tool',tool_call_id:tc.id,content:(typeof out==='string'?out:JSON.stringify(out)).slice(0,12000)})}continue}
+   const text=m.content||'';opts.onText&&opts.onText({text,delta:text});return {text,truncated:false}}
+  return {text:'I stopped after too many steps - check your tasks.',truncated:true}}}
+async function getSample(){const fs=freeSample();if(!window.claude)return fs;const s=claude.use?await claude.use('sample'):null;return s||fs}
+function worldSummary(){const k=dkey();return {name:S.profile.name,course:S.profile.course,aim:S.intent,hoursPerDay:S.profile.hours,streak:S.streak,
+ goals:S.goals.filter(g=>!g.done).map(g=>({goal:g.text,subject:subById(g.subj)?.name||null,deadline:g.deadline||null})),
+ subjects:S.subjects.map(s=>({name:s.name,marks:s.score,priority:s.priority||null,daysUntouched:subStale(s),sources:s.sources||'',topics:s.topics.length,notStarted:s.topics.filter(t=>t.status==='new').length,mastered:s.topics.filter(t=>t.status==='mastered').length,reviewsDue:s.topics.filter(t=>t.next&&t.next<=k).length,minutesLogged:Math.round(s.topics.reduce((a,t)=>a+t.mins,0)),mistakesLast14d:recentMistakes(s.id)})),memoryBook:memContext(40)}}
+const T_SEARCH={name:'search_catalog',description:'Search the FlowCraft library of real, verified courses, textbooks, official admission pages and practice papers. Returns up to 8 matches with ids. Call several times with different keywords.',inputSchema:{type:'object',properties:{query:{type:'string',description:'keywords, e.g. "studienkolleg maths sample paper" or "german b1"'},subject:{type:'string'}},required:['query']},execute:i=>searchCat(i.query,i.subject)};
+const T_WORLD={name:'get_my_world',description:'Get the student\'s current subjects, progress, goals and stated aim.',inputSchema:{type:'object',properties:{}},execute:()=>worldSummary()};
+const T_ADDSUB={name:'add_subject',description:'Add a subject (with topics in study order) to the student\'s world. Only call when the student clearly asked you to add it.',inputSchema:{type:'object',properties:{name:{type:'string'},topics:{type:'array',items:{type:'string'}},sources:{type:'string'}},required:['name','topics']},execute:i=>{const r=mergeData({subjects:[{name:i.name,topics:i.topics,sources:i.sources}]});save();setTimeout(render,50);return r}};
+const T_ADDGOAL={name:'add_goal',description:'Add a goal with optional deadline (YYYY-MM-DD). Only when the student asked.',inputSchema:{type:'object',properties:{text:{type:'string'},subject:{type:'string'},deadline:{type:'string'}},required:['text']},execute:i=>{const r=mergeData({goals:[i]});save();setTimeout(render,50);return r}};
+const T_MEMADD={name:'add_memory',description:'Save an academic or work-related memory (a mistake, a workflow that works, a study preference, or a fact like a deadline). Never save personal, health, money or relationship details.',inputSchema:{type:'object',properties:{text:{type:'string'},kind:{type:'string',enum:['mistake','workflow','preference','fact']}},required:['text','kind']},execute:i=>{const m=addMem(i.text,i.kind,'Copper Helper');save();return m?'saved':'empty'}};
+function jsonFrom(t){const m=String(t||'').match(/\{[\s\S]*\}/);if(!m)throw new Error('no json');return JSON.parse(m[0])}
+async function askTip(id){
+ const [t]=findTask(id);const sub=subById(t.sub),tp=topById(sub,t.top);const sample=await getSample();
+ if(!sample){toast('Helper unavailable','Asking Claude works when FlowCraft is opened inside Claude (claude.ai).');return}
+ t.tip='The Copper Helper is rummaging through the chests…';render();openDetails(id);
+ try{const r=await sample(`You are the Copper Helper, a study coach in a game-style planner. Student: ${S.profile.course||'student'}. Their aim: ${S.intent||'not stated'}.\nTask: ${TYPEN[t.type]} - ${tp?tp.name+' ('+sub.name+')':sub.name}, ${t.mins} minutes. Their sources: ${sub.sources||'none'}.\n${memContext(20)}\nIf a past mistake or workflow above is relevant to this topic, use it.\nYou may call search_catalog for verified resources. Reply in plain text under 150 words:\nMETHOD: 4 numbered steps specific to this topic.\nSOURCES: 2-3 specific resources (prefer catalog items by exact title; otherwise well-known books/chapters by name). No URLs.\nWATCH OUT: one common mistake on this topic.`,{modelTier:'quick',tools:[T_SEARCH]});
+  t.tip=(r&&r.text||'').trim()||'No answer came back.'}
+ catch(e){t.tip='';toast('Helper unavailable',e&&e.code==='rate_limited'?'Too many questions - try again in a minute.':'Could not reach Claude just now.')}
+ save();render();openDetails(id);
+}
+function openDetails(id){const b=document.querySelector(`[data-act="tip"][data-id="${id}"]`);const d=b&&b.closest('details');if(d)d.open=true}
+
+/* ================= view: chests ================= */
+function newTopic(name){return {id:uid(),name,status:'new',reviews:0,next:null,conf:0,mins:0,last:null}}
+function vChests(){
+ const k=dkey();
+ const subs=S.subjects.map(s=>{const n=s.topics.length,d=s.topics.filter(t=>t.status==='done'||t.status==='mastered').length;const st=subStale(s),ox=oxStage(st);
+  return `<button class="panel copper subc" data-act="opensub" data-id="${s.id}"><div class="row">${IC.cuchest(44,OX[ox][1])}<div><div class="nm">${esc(s.name)}</div><div class="small">${OX[ox][0]}${st>2?` · ${st}d untouched`:''}</div></div></div><div class="small">${n} topics · ${d} cleared${s.score!=null?` · ${s.score}%`:''}${s.priority?` · ${esc(s.priority)} priority`:''}</div><div class="mini"><i style="width:${n?d/n*100:0}%"></i></div></button>`}).join('');
+ const goals=S.goals.map(g=>{const s=subById(g.subj);const dl=g.deadline?daysBetween(k,g.deadline):null;return `<tr><td><label class="row" style="margin:0;gap:8px;font-weight:500"><input type="checkbox" data-act="goaldone" data-id="${g.id}" ${g.done?'checked':''}><span style="${g.done?'text-decoration:line-through':''}">${esc(g.text)}</span></label></td><td>${esc(s?s.name:'-')}</td><td class="n">${g.deadline?esc(g.deadline)+(dl!=null?` (${dl<0?'past':dl+'d'})`:''):'-'}</td><td><button class="btn sm" data-act="delgoal" data-id="${g.id}" aria-label="Delete goal">X</button></td></tr>`}).join('');
+ return `<div class="vtitle"><div><h1>Chests</h1><p>Copper chests oxidise when a subject is left untouched. Studying scrapes them shiny again.</p></div></div>
+ <div class="subs">${subs}<button class="panel subc" data-act="newsub"><div class="row">${IC.chest(44)}<div class="nm">+ New subject</div></div><div class="small">Place a new chest</div></button></div>
+ <div class="split" style="margin-top:16px"><div class="panel leaf"><h2>Goals</h2>
+ ${S.goals.length?`<table class="tbl"><tr><th>Goal</th><th>Subject</th><th>Deadline</th><th></th></tr>${goals}</table>`:'<p>No goals yet. Goals with deadlines push their subject up the daily plan.</p>'}
+ <h3 style="margin-top:14px">Add goal</h3><input id="gT" placeholder="e.g. Pass the Studienkolleg entrance test"><div class="grid2" style="margin-top:8px"><select id="gS" aria-label="Subject"><option value="">(any subject)</option>${S.subjects.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select><input id="gD" type="date" aria-label="Deadline"></div><div style="margin-top:10px"><button class="btn go" data-act="addgoal">Add goal</button></div></div>
+ <div class="panel stone"><h2>Paste more data</h2><p class="small">Syllabus, marks, chapter lists - any format. The Copper Helper can sort it, or use <i>Subject (72%): topic, topic</i>.</p><textarea id="impT" placeholder="Physics (68%): Kinematics, Laws of Motion, Work and Energy&#10;Maths: Limits, Derivatives&#10;Goal: Physics 85% by 2027-03-10"></textarea><div class="row" style="margin-top:10px"><button class="btn cu" data-act="impai">${IC.golem(18)} Let the Helper sort it</button><button class="btn" data-act="impraw">Import as written</button></div><div id="impMsg" class="small"></div></div></div>`;
+}
+const STATUSN={new:'Not started',learning:'Learning',done:'Understood',mastered:'Mastered'};
+function openSub(id){
+ const s=subById(id);const k=dkey();
+ modal(`<div class="panel modal wide copper"><div class="row between"><h2 style="margin:0">${esc(s.name)}</h2><button class="btn sm" data-act="close">Close</button></div>
+ <div class="chestwrap" style="padding:0">${CHEST_SVG}</div>
+ <div class="grid3"><div><label for="ssN">Name</label><input id="ssN" value="${esc(s.name)}"></div><div><label for="ssC">Current marks %</label><input id="ssC" type="number" min="0" max="100" value="${s.score??''}"></div><div><label for="ssP">Priority</label><select id="ssP">${['','high','medium','low'].map(p=>`<option value="${p}" ${(s.priority||'')===p?'selected':''}>${p||'normal'}</option>`).join('')}</select></div></div>
+ <label for="ssR">Sources (book first, question bank second, comma-separated)</label><input id="ssR" value="${esc(s.sources||'')}" placeholder="e.g. NCERT Physics, HC Verma exercises, PW lectures">
+ <h3 style="margin-top:14px">Topics (study order)</h3>
+ <table class="tbl"><tr><th>Topic</th><th>Status</th><th>Time</th><th>Review</th><th></th></tr>${s.topics.map(t=>`<tr><td>${esc(t.name)}</td><td><select data-act="tstat" data-s="${s.id}" data-id="${t.id}" aria-label="Status">${Object.keys(STATUSN).map(x=>`<option value="${x}" ${t.status===x?'selected':''}>${STATUSN[x]}</option>`).join('')}</select></td><td class="n">${fmtMin(t.mins)}</td><td class="n">${t.next?(t.next<=k?'due':esc(t.next.slice(5))):'-'}</td><td><button class="btn sm" data-act="deltop" data-s="${s.id}" data-id="${t.id}" aria-label="Delete topic">X</button></td></tr>`).join('')}</table>
+ <div class="row" style="margin-top:10px;flex-wrap:nowrap"><input id="ssT" placeholder="Add topics (comma-separated)"><button class="btn go" data-act="addtop" data-id="${s.id}">Add</button></div>
+ <div class="row between" style="margin-top:16px"><button class="btn go" data-act="savesub" data-id="${s.id}">Save chest</button><button class="btn red" data-act="delsub" data-id="${s.id}">Delete subject</button></div></div>`);
+ beep(SND.chest);setTimeout(()=>{const c=$('#cb');c&&c.classList.add('open')},60);
+}
+function saveSubFields(id){const s=subById(id);if(!s||!$('#ssN'))return;s.name=$('#ssN').value.trim()||s.name;const c=$('#ssC').value;s.score=c===''?null:clamp(+c,0,100);s.sources=$('#ssR').value.trim();s.priority=$('#ssP').value||null}
+function parseRaw(txt){
+ const subs=[],goals=[];let cur=null;
+ txt.split('\n').forEach(line=>{let l=line.trim();if(!l)return;
+  const gm=l.match(/^goals?\s*[:\-]\s*(.+)$/i);if(gm){const d=gm[1].match(/(\d{4}-\d{2}-\d{2})/);goals.push({text:gm[1].replace(/\s*(by|before)?\s*\d{4}-\d{2}-\d{2}/i,'').trim(),subject:null,deadline:d?d[1]:null});return}
+  const bullet=/^([-*•]|\d+[.)])\s*/.test(l);
+  if(!bullet&&l.includes(':')){let [name,...rest]=l.split(':');rest=rest.join(':');let score=null;const sm=name.match(/(\d{1,3})\s*%/)||name.match(/\((\d{1,3})\)/);if(sm){score=+sm[1];name=name.replace(sm[0],'')}
+   name=name.replace(/[()\-–]+\s*$/,'').replace(/[()]/g,'').trim();const rm=rest.match(/^\s*(\d{1,3})\s*%\s*$/);if(rm){score=+rm[1];rest=''}
+   cur={name,score,topics:rest.split(/[,;|]/).map(s=>s.trim()).filter(Boolean),sources:''};subs.push(cur);return}
+  if(cur)cur.topics.push(l.replace(/^([-*•]|\d+[.)])\s*/,''));else{cur={name:l,score:null,topics:[],sources:''};subs.push(cur)}});
+ return {subjects:subs,goals};
+}
+function mergeData(data,target){
+ const T=target||S;let ns=0,nt=0,ng=0;
+ (data.subjects||[]).forEach(d=>{const name=String(d.name||'').trim();if(!name)return;let s=T.subjects.find(x=>x.name.toLowerCase()===name.toLowerCase());
+  if(!s){s={id:uid(),name,score:null,sources:'',topics:[]};T.subjects.push(s);ns++}
+  if(d.score!=null&&!isNaN(+d.score))s.score=clamp(+d.score,0,100);if(d.sources&&!s.sources)s.sources=String(d.sources);if(d.priority)s.priority=String(d.priority);
+  (d.topics||[]).forEach(tn=>{tn=String(tn).trim();if(tn&&!s.topics.some(t=>t.name.toLowerCase()===tn.toLowerCase())){s.topics.push(newTopic(tn));nt++}})});
+ (data.goals||[]).forEach(g=>{if(!g.text)return;const s=g.subject&&T.subjects.find(x=>x.name.toLowerCase()===String(g.subject).toLowerCase());T.goals.push({id:uid(),text:String(g.text),subj:s?s.id:'',deadline:/^\d{4}-\d{2}-\d{2}$/.test(g.deadline||'')?g.deadline:'',done:false,fromParse:!!target});ng++});
+ return `Added ${ns} subjects, ${nt} topics, ${ng} goals.`;
+}
+async function aiParse(txt){const sample=await getSample();if(!sample)throw new Error('unavailable');
+ const r=await sample(`Convert this student's pasted academic data into JSON. Today is ${dkey()}.\nReturn ONLY JSON: {"subjects":[{"name":string,"score":number|null,"topics":[string] (study order),"sources":string}],"goals":[{"text":string,"subject":string|null,"deadline":"YYYY-MM-DD"|null}]}\nTurn any exam or target into a goal. Keep topic names short.\n\nDATA:\n${txt.slice(0,12000)}`,{modelTier:'default'});return jsonFrom(r&&r.text)}
+
+/* ================= view: Copper Helper ================= */
+function vHelper(){
+ const P=S.plan;const days=lastStudyDays();const ox=oxStage(days===99?0:days);
+ const planHtml=P?`<div class="plan">${P.summary?`<p>${esc(P.summary)}</p>`:''}
+  ${(P.subjects||[]).map((s,i)=>{const exists=S.subjects.some(x=>x.name.toLowerCase()===String(s.name).toLowerCase());return `<div class="panel ${i%2?'stone':''}"><div class="row between"><h3 style="margin:0">${esc(s.name)} ${s.priority?`<span class="chip ${s.priority==='high'?'practice':s.priority==='low'?'lt':'learn'}">${esc(s.priority)}</span>`:''}${s.hoursPerWeek?` <span class="chip lt">${esc(s.hoursPerWeek)} h/week</span>`:''}</h3><button class="btn sm ${exists?'':'go'}" data-act="planadd" data-i="${i}">${exists?'Merge topics':'+ Add to my world'}</button></div>
+   <p class="small">${esc(s.why||'')}</p><p class="small"><b>Topics:</b> ${esc((s.topics||[]).join(' · '))}</p>
+   ${(s.resources||[]).map(catById).filter(Boolean).map(c=>`<div class="row small" style="gap:6px">${IC.shelf(16)}<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title)}</a><span class="muted">${esc(c.provider)}</span></div>`).join('')}
+   ${(s.extra||[]).length?`<div class="small muted">Also suggested by the Helper (check these exist): ${esc(s.extra.join('; '))}</div>`:''}</div>`}).join('')}
+  ${(P.milestones||[]).length?`<div class="panel leaf"><h3>Milestones</h3>${P.milestones.map((m,i)=>`<div class="row between small" style="padding:4px 0;border-bottom:2px dashed #d6c3a0"><span>${esc(m.text)}</span><span class="row"><b>${esc(m.by||'')}</b><button class="btn sm" data-act="msadd" data-i="${i}">+ Goal</button></span></div>`).join('')}</div>`:''}
+  ${(P.questions||[]).length?`<div class="small"><b>The Helper wonders:</b> ${esc(P.questions.join(' · '))}</div>`:''}</div>`:'<p>No plan yet. Tell the Helper what you\'re aiming for and press <b>Design my path</b>.</p>';
+ return `<div class="vtitle"><div><h1>Copper Helper</h1><p>Your AI advisor: it learns what you're working toward, picks subjects and courses, and sorts resources into your chests.</p></div></div>
+ <div class="split"><div class="stack">
+  <div class="panel copper"><div class="row" style="align-items:flex-start;flex-wrap:nowrap"><div class="slot" style="width:84px;height:84px;background:#cfe9ff">${IC.golem(60,OX[ox][1])}</div><div style="flex:1"><h2>What are you working toward?</h2><p class="small">Be specific: degree, country, exam, timeline, what worries you. The Helper reads this before every suggestion.</p></div></div>
+  <textarea id="intent" style="min-height:110px" placeholder="e.g. Get into a Bachelor's in Mechanical Engineering in Germany for winter 2027 via Studienkolleg. Need German B1, strong maths, and the APS certificate.">${esc(S.intent)}</textarea>
+  <div class="row" style="margin-top:10px"><button class="btn" data-act="saveintent">Save aim</button><button class="btn cu" data-act="pathfind">${IC.golem(20)} Design my path</button></div><div id="pfMsg" class="small" style="margin-top:6px"></div></div>
+  <div class="panel"><h2>Your path</h2>${planHtml}</div></div>
+ <div class="stack"><div class="panel dark"><h2>Talk it through in Flow</h2><p class="small">Questions about subjects, courses or your plan now go in the Flow tab, the chat that can also add and move your tasks.</p><button class="btn cu" data-view="flow">Open Flow</button></div>
+ <div class="panel stone"><h3>How it finds courses</h3><p class="small">The Helper searches the Library: ${CAT.length} real courses, textbooks, official admission pages and past papers, checked online in November 2026. It can also suggest resources from its own knowledge, marked "check these exist". This page can't browse live websites itself, so open links to confirm dates and fees.</p></div></div></div>`;
+}
+async function pathfind(){
+ S.intent=$('#intent').value.trim();save();
+ const msg=$('#pfMsg');const sample=await getSample();
+ if(!sample){msg.textContent='The Helper needs FlowCraft opened inside Claude (claude.ai).';return}
+ if(!S.intent&&!S.goals.length){msg.textContent='Write your aim first so the Helper knows what you want.';return}
+ msg.textContent='The Copper Helper is searching the library and sorting chests…';
+ try{const r=await sample(`You are the Copper Helper inside FlowCraft, a game-style study planner. Today ${dkey()}.\nUse get_my_world to read the student's situation and search_catalog (several times, different keywords) to find real resources.\nDesign their academic path toward their aim. Reply with ONLY JSON:\n{"intent":"one sentence restating what they're trying to achieve","summary":"2-3 sentences of strategy","subjects":[{"name":"","why":"one sentence","priority":"high|medium|low","hoursPerWeek":number,"topics":["8-14 topics in study order"],"resources":["catalog ids from search_catalog only"],"extra":["other well-known resources by name, if useful"]}],"milestones":[{"text":"","by":"YYYY-MM-DD"}],"questions":["up to 2 short questions that would sharpen the plan"]}\nKeep 3-6 subjects. Fit total weekly hours to their hoursPerDay. Reuse their existing subject names when they match.`,{modelTier:'default',tools:[T_WORLD,T_SEARCH]});
+  const p=jsonFrom(r&&r.text);p.subjects=(p.subjects||[]).slice(0,8).map(s=>Object.assign(s,{resources:(s.resources||[]).filter(id=>catById(id))}));
+  S.plan=p;if(p.intent&&!S.intent)S.intent=p.intent;S.plan.made=dkey();save();render();toast('Path designed','Add the subjects you like to your world.','',IC.golem(28))}
+ catch(e){msg.textContent=e&&e.code==='rate_limited'?'The Helper needs a minute. Try again shortly.':'The Helper couldn\'t finish that. Try again.'}
+}
+function planAdd(i){const s=S.plan.subjects[i];if(!s)return;const src=(s.resources||[]).map(catById).filter(Boolean).map(c=>c.title).join(', ');
+ const r=mergeData({subjects:[{name:s.name,topics:s.topics||[],sources:src,priority:s.priority}]});const k=dkey();if(!S.days[k]||!S.days[k].tasks.length)S.days[k]={tasks:plan(k),settled:false};save();render();toast('Chest placed',r)}
+async function chatSend(text){
+ text=String(text||'').trim();if(!text)return;const sample=await getSample();
+ CHAT.push({role:'user',content:text});
+ if(!sample){CHAT.push({role:'assistant',content:'I can only talk when FlowCraft is opened inside Claude (claude.ai).'});render();return}
+ CHAT.push({role:'assistant',content:'…'});render();const box=[...document.querySelectorAll('#chat .msg')].pop();
+ const sys=`You are the Copper Helper, a friendly study advisor inside FlowCraft (a blocky game-style study planner). Be concrete and brief (under 160 words). Use get_my_world to know the student; use search_catalog to cite real resources by exact title. Only call add_subject or add_goal when the student explicitly asks you to add something. Today ${dkey()}. Student's aim: ${S.intent||'not stated yet - ask about it if relevant'}.\nUse their Memory Book (in get_my_world) to tailor advice to past mistakes and what worked. When they say "remember" something academic or work-related, call add_memory.`;
+ const msgs=[{role:'user',content:sys+'\n\n(Conversation starts.)'},{role:'assistant',content:'Understood.'},...CHAT.slice(0,-1).slice(-12)];
+ try{const r=await sample(msgs,{modelTier:'default',cache:false,tools:[T_WORLD,T_SEARCH,T_ADDSUB,T_ADDGOAL,T_MEMADD],onText:({text})=>{if(box)box.textContent=text}});CHAT[CHAT.length-1].content=(r&&r.text||'').trim()||'(no answer)'}
+ catch(e){CHAT[CHAT.length-1].content=e&&e.code==='rate_limited'?'Give me a minute - too many questions at once.':'I couldn\'t reach Claude just now.'}
+ if(CHAT.length>30)CHAT=CHAT.slice(-30);render();
+}
+
+/* ================= Memory Book ================= */
+const MEMK={mistake:['Mistake','practice'],workflow:['What works','learn'],preference:['Preference','revise'],fact:['Fact','test']};
+function addMem(text,kind,source,extra={}){text=String(text||'').trim();if(!text)return null;const m=Object.assign({id:uid(),text:text.slice(0,400),kind:MEMK[kind]?kind:'fact',source:source||'manual',d:dkey()},extra);S.mem.push(m);if(S.mem.length>400)S.mem=S.mem.slice(-400);return m}
+function memFromTask(t){const ratio=t.spent>6e4?(t.spent/6e4/t.mins).toFixed(1):null;const meta=` (${TYPEN[t.type]}, focus ${t.focus||'-'}/5${ratio?`, took ${ratio}x planned`:''})`;
+ if(t.wrong){addMem(`${t.title}: ${t.wrong}${meta}`,'mistake','quest',{subj:t.sub});t.wrong=''}
+ if(t.worked){addMem(`${t.title}: ${t.worked}${meta}`,'workflow','quest',{subj:t.sub});t.worked=''}}
+function memContext(n=30){const m=S.mem.slice(-n).map(x=>{const s=x.subj&&subById(x.subj);return `[${x.kind}${s?' · '+s.name:''} · ${x.d}] ${x.text}`});
+ return (S.lessons&&S.lessons.items&&S.lessons.items.length?'Lessons learned so far: '+S.lessons.items.join(' | ')+'\n':'')+(m.length?'Memory (academic/work only):\n'+m.join('\n'):'No memories recorded yet.')}
+function recentMistakes(subId){const cut=addDays(dkey(),-14);return S.mem.filter(m=>m.kind==='mistake'&&m.subj===subId&&m.d>=cut).length}
+const ACAD=/(study|exam|test|class|course|subject|chapter|topic|math|physic|chem|german|english|ielts|studienkolleg|aps|university|college|degree|bachelor|homework|assignment|revision|revise|practice|notes|learn|skill|code|coding|program|java|python|project|work|job|deadline|productiv|focus|schedule|routine|pomodoro|procrastinat|career|business|client|portfolio)/i;
+async function filterAIMemory(raw,source){
+ const sample=await getSample();
+ if(!sample){return {items:raw.split(/\n+/).map(l=>l.replace(/^[-*•\d.)\s]+/,'').trim()).filter(l=>l.length>8&&ACAD.test(l)).slice(0,60).map(text=>({text,kind:/mistake|struggle|weak|forgot|late|procrastinat|miss/i.test(text)?'mistake':'fact'})),dropped:null,local:true}}
+ const r=await sample(`Below is memory/notes about a student, exported from ${source}. Keep ONLY items about academics and work: studies, courses, subjects, exams, deadlines, admissions plans, learning methods, skills, coding/technical projects, career and their own business or creative work AS WORK, productivity and work habits. DROP everything personal: relationships, family, friends, health, body, mood, money/finances, religion, politics, identity, home location, entertainment and hobbies done for fun. When unsure, drop it.\nRewrite each kept item as one short third-person-free fact (e.g. "Struggles to start revision before 10pm"). kind: "mistake" (something that went wrong, a weakness, a bad habit), "workflow" (a method or routine that works), "preference" (how they like to study/work), "fact" (goal, course, plan, skill, deadline).\nReturn ONLY JSON: {"items":[{"text":"","kind":""}],"dropped":number}\n\nEXPORT:\n${String(raw).slice(0,14000)}`,{modelTier:'default'});
+ const j=jsonFrom(r&&r.text);j.items=(j.items||[]).filter(i=>i&&i.text).slice(0,80);return j}
+
+/* ================= Notion bridge (via the viewer's claude.ai connector) ================= */
+let MCP;
+async function getMcp(){if(MCP!==undefined)return MCP;MCP=window.claude&&claude.use?await claude.use('mcp'):null;return MCP}
+async function notion(tool,input){const m=await getMcp();if(!m)throw {code:'not_granted'};const r=await m.callTool('Notion',tool,input);return r&&('payload' in r)?r.payload:r}
+function notionErr(e){const c=e&&e.code;return ({needs_reauth:'Reconnect Notion in claude.ai Settings → Connectors.',server_not_connected:'Add the Notion connector in claude.ai Settings → Connectors.',selection_required:'Pick which Notion connection to use in the prompt claude.ai shows.',not_in_manifest:'Notion access was declined for this page. Reload the page to be asked again.',approval_required:'This needs your OK - press the button again and allow it.',not_granted:'Notion works when FlowCraft is opened inside Claude (claude.ai).',capability_disabled:'Notion isn\'t available in this view.',server_unavailable:'Notion isn\'t responding - try again in a moment.',tool_error:'Notion said: '+String(e&&e.message||'error').slice(0,160),cancelled:'Cancelled.'})[c]||'Couldn\'t talk to Notion'+(e&&e.message?': '+String(e.message).slice(0,120):'.')}
+function walk(o,f,d=0){if(d>7||!o||typeof o!=='object')return;f(o);(Array.isArray(o)?o:Object.values(o)).forEach(v=>walk(v,f,d+1))}
+function asObj(p){if(typeof p==='string'){try{return JSON.parse(p)}catch(e){return p}}return p}
+function asText(p){if(typeof p==='string')return p;if(p&&typeof p==='object'){for(const k of ['text','content','markdown','page','result']){if(typeof p[k]==='string')return p[k]}}return JSON.stringify(p)}
+function parseSearch(p){p=asObj(p);const out=[],seen=new Set();
+ walk(p,o=>{if(Array.isArray(o))return;const title=o.title||o.name;const id=o.url||o.id;if(typeof title==='string'&&id&&!seen.has(id)){seen.add(id);out.push({id:String(id),title,hl:String(o.highlight||o.snippet||o.text||'').slice(0,180),url:safeUrl(o.url)})}});
+ if(!out.length&&typeof p==='string'){const re=/(?:title="([^"]+)"[^>]*?url="(https:\/\/[^"]+)")|(?:url="(https:\/\/[^"]+)"[^>]*?title="([^"]+)")/g;let m;while((m=re.exec(p))&&out.length<10){const t=m[1]||m[4],u=m[2]||m[3];if(!seen.has(u)){seen.add(u);out.push({id:u,title:t,hl:'',url:u})}}
+  if(!out.length)(p.match(/https:\/\/www\.notion\.so\/[^\s"'<>)\]]+/g)||[]).slice(0,10).forEach(u=>{if(!seen.has(u)){seen.add(u);out.push({id:u,title:decodeURIComponent(u.split('/').pop().replace(/-[0-9a-f]{32}$/,'').replace(/-/g,' '))||'Notion page',hl:'',url:u})}})}
+ return out.slice(0,10)}
+const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch(e){return 'UTC'}})();
+function localIso(k,min){const d=new Date(k+'T00:00:00');d.setMinutes(min);return dkey(d)+'T'+z(d.getHours())+':'+z(d.getMinutes())+':00'}
+function parseEvents(p,k){p=asObj(p);const ev=[],seen=new Set();
+ walk(p,o=>{if(Array.isArray(o))return;const title=o.summary||o.title;if(typeof title!=='string')return;const dts=[];walk(o,x=>{if(Array.isArray(x))return;for(const v of Object.values(x))if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v))dts.push(v)});
+  if(!dts.length)return;const a=new Date(dts[0]),b=new Date(dts[1]||dts[0]);if(isNaN(a))return;if(dkey(a)!==k&&dkey(b)!==k)return;
+  const s=dkey(a)===k?a.getHours()*60+a.getMinutes():0,e=dkey(b)===k?b.getHours()*60+b.getMinutes():1439;const key=title+s;if(seen.has(key)||/^(Study|Flow)Craft ·/.test(title))return;seen.add(key);ev.push({title:title.slice(0,120),s,e:Math.max(e,s+15)})});
+ return ev.sort((x,y)=>x.s-y.s)}
+let HUB={results:[],nMsg:'',calMsg:'',memMsg:'',preview:null,status:null,filter:'',q:'',busy:false};
+async function hubStatus(){try{const m=await getMcp();if(!m){HUB.status='off';return}const r=await m.listTools('Notion');const s=(r.servers||[])[0];HUB.status=s?(s.authStatus==='needs_reauth'?'reauth':'ok'):'missing'}catch(e){HUB.status='off'}if(VIEW==='hub')render()}
+async function readCalendar(){const k=dkey();HUB.calMsg='Reading your calendar…';render();
+ try{const p=await notion('notion-calendar-list-events',{timeMin:localIso(k,0)+offsetStr(),timeMax:localIso(k,1439)+offsetStr(),timeZone:TZ});let ev=parseEvents(p,k);
+  if(!ev.length&&typeof p==='string'&&p.length>40){const sample=await getSample();if(sample){const r=await sample(`Extract today's (${k}) calendar events from this text. Return ONLY JSON {"events":[{"title":"","start":"HH:MM","end":"HH:MM"}]} in ${TZ} local time. Skip all-day events.\n\n${p.slice(0,8000)}`,{modelTier:'quick'});const j=jsonFrom(r&&r.text);ev=(j.events||[]).map(x=>{const [h1,m1]=String(x.start).split(':').map(Number),[h2,m2]=String(x.end).split(':').map(Number);return {title:String(x.title||'Event'),s:h1*60+m1,e:h2*60+m2}}).filter(x=>!isNaN(x.s)&&!isNaN(x.e))}}
+  S.busy[k]=ev;HUB.calMsg=ev.length?`${ev.length} event${ev.length>1?'s':''} found. Quests will avoid these times.`:'No timed events today.';
+  const day=S.days[k];if(day){const moved=day.tasks.filter(t=>t.status==='todo'&&t.slot!=null&&ev.some(b=>t.slot<b.e+5&&t.slot+t.mins>b.s-5));if(moved.length){moved.forEach(t=>t.slot=null);assignSlots(moved,k,day.tasks.filter(t=>!moved.includes(t)));day.tasks.sort((a,b)=>(a.slot??9999)-(b.slot??9999));HUB.calMsg+=` Moved ${moved.length} clashing quest${moved.length>1?'s':''}.`}}
+  save()}catch(e){HUB.calMsg=notionErr(e)}render()}
+function offsetStr(){const o=-new Date().getTimezoneOffset();const s=o>=0?'+':'-';return s+z(Math.floor(Math.abs(o)/60))+':'+z(Math.abs(o)%60)}
+function pushCalendar(){const k=dkey();const T=(today()?.tasks||[]).filter(t=>t.status==='todo'&&t.slot!=null&&!t.calPushed);
+ if(!T.length){HUB.calMsg='No unscheduled quests left to add.';render();return}
+ confirmBox('Add quests to your calendar?',`This creates ${T.length} event${T.length>1?'s':''} on your primary calendar through Notion Calendar, titled "FlowCraft · …".`,'Add events',async()=>{HUB.calMsg='Adding events…';render();
+  try{await notion('notion-calendar-create-events',{timeZone:TZ,events:T.map(t=>({summary:'FlowCraft · '+t.title,description:`${t.how}\n\nSource: ${t.src}`.slice(0,1500),disableConferencing:true,period:{type:'DATE_TIME',start:{dateTime:localIso(k,t.slot),timeZone:TZ},end:{dateTime:localIso(k,t.slot+t.mins),timeZone:TZ}}}))});
+   T.forEach(t=>t.calPushed=true);HUB.calMsg=`Added ${T.length} quests to your calendar.`;save()}
+  catch(e){HUB.calMsg=notionErr(e)+(e&&(e.code==='server_unavailable'||e.code==='upstream_error')?' Some events may have been created - check your calendar before trying again.':'')}render()})}
+async function saveLog(){const k=dkey();const T=today()?.tasks||[];HUB.nMsg='Writing today\'s log to Notion…';render();
+ const memT=S.mem.filter(m=>m.d===k);
+ const md=`Studied ${fmtMin(T.reduce((a,t)=>a+t.spent,0)/6e4)} of ${fmtMin(T.reduce((a,t)=>a+t.mins,0))} planned · streak ${S.streak} · level ${lvl()}\n\n## Quests\n${T.map(t=>`- [${t.status==='done'?'x':' '}] ${t.title} - ${t.mins}m planned, ${fmtMin(t.spent/6e4)} done${t.focus?`, focus ${t.focus}/5`:''}${t.score!=null?`, ${t.score}%`:''}${t.output?` · ${t.output}`:''}${t.status!=='done'&&t.status!=='todo'?` (${t.status})`:''}`).join('\n')||'- none'}\n\n## Mistakes noted\n${memT.filter(m=>m.kind==='mistake').map(m=>'- '+m.text).join('\n')||'- none'}\n\n## What worked\n${memT.filter(m=>m.kind==='workflow').map(m=>'- '+m.text).join('\n')||'- none'}${S.intent?`\n\n## Aim\n${S.intent}`:''}`;
+ try{const p=await notion('notion-create-pages',{creation_mode:'draft',pages:[{properties:{title:`FlowCraft log · ${dayName(k)}`},content:md,icon:'📗'}]});const r=parseSearch(p);const url=(r[0]&&r[0].url)||((asText(p).match(/https:\/\/www\.notion\.so\/[^\s"'<>)\]]+/)||[])[0]);
+  S.notion.logs[k]=url||true;HUB.nMsg=url?'Saved. ':'Saved to your private Notion pages.';save()}
+ catch(e){HUB.nMsg=notionErr(e)}render()}
+async function searchNotion(){const q=$('#nq').value.trim();HUB.q=q;if(!q)return;HUB.nMsg='Searching Notion…';HUB.results=[];render();
+ try{const p=await notion('notion-search',{query:q,page_size:8});HUB.results=parseSearch(p);HUB.nMsg=HUB.results.length?'':'Nothing found.'}catch(e){HUB.nMsg=notionErr(e)}render()}
+async function importNotion(i,as){const r=HUB.results[i];if(!r)return;HUB.nMsg=`Reading "${r.title}"…`;render();
+ try{const text=asText(await notion('notion-fetch',{id:r.id})).slice(0,14000);
+  if(as==='plan'){const data=await aiParse(text);HUB.nMsg=mergeData(data);const k=dkey();if(!S.days[k]||!S.days[k].tasks.length)S.days[k]={tasks:plan(k),settled:false}}
+  else{const j=await filterAIMemory(text,'a Notion page titled "'+r.title+'"');HUB.preview={items:j.items.map(x=>Object.assign(x,{on:true})),source:'Notion',dropped:j.dropped,local:j.local};HUB.nMsg=''}
+  save()}catch(e){HUB.nMsg=e&&e.code?notionErr(e):'The Helper couldn\'t read that page.'}render()}
+async function pullNotionMemory(){HUB.memMsg='Searching your Notion memories…';render();
+ try{const a=await notion('notion-memory-search',{query:'study exam course learning',limit:25});const b=await notion('notion-memory-search',{query:'work project deadline habit',limit:25});
+  const j=await filterAIMemory(asText(a)+'\n\n'+asText(b),'Notion Memory');HUB.preview={items:j.items.map(x=>Object.assign(x,{on:true})),source:'Notion Memory',dropped:j.dropped,local:j.local};HUB.memMsg=''}
+ catch(e){HUB.memMsg=e&&e.code?notionErr(e):'Couldn\'t sort those memories.'}render()}
+async function importPasted(){const raw=$('#memRaw').value;const src=$('#memSrc').value;if(!raw.trim())return;HUB.memMsg='Filtering to academic and work items only…';render();
+ try{const j=await filterAIMemory(raw,src);HUB.preview={items:j.items.map(x=>Object.assign(x,{on:true})),source:src,dropped:j.dropped,local:j.local};HUB.memMsg=''}catch(e){HUB.memMsg='Couldn\'t filter that - try a shorter paste.'}render()}
+function savePreview(){const P=HUB.preview;if(!P)return;let n=0;P.items.forEach((x,i)=>{const cb=$('#pv'+i);if(cb?cb.checked:x.on){addMem(x.text,x.kind,P.source);n++}});HUB.preview=null;HUB.memMsg=`Saved ${n} memories.`;save();render()}
+async function learnLessons(){const sample=await getSample();if(!sample){toast('Helper unavailable','Lessons need FlowCraft opened inside Claude (claude.ai).');return}
+ if(S.mem.length<2&&S.log.length<3){toast('Not enough history yet','Finish a few quests and note what went wrong or worked.');return}
+ HUB.memMsg='The Helper is reading your history…';render();
+ const H=hourStats();const stats={timeFactor:S.factor,missed:all(S).filter(t=>t.status==='missed').length,skipped:all(S).filter(t=>t.status==='skipped').length,done:all(S).filter(t=>t.status==='done').length,focusByHour:H.map((h,i)=>h.m>10?{h:i,f:+(h.w/h.m).toFixed(1),min:Math.round(h.m)}:null).filter(Boolean),profile:{hoursPerDay:S.profile.hours,session:S.profile.block,pref:S.profile.pref},subjects:S.subjects.map(s=>({name:s.name,marks:s.score,mistakes14d:recentMistakes(s.id),untouchedDays:subStale(s)}))};
+ try{const r=await sample(`You coach a student using their own history. Aim: ${S.intent||'not stated'}.\nStats: ${JSON.stringify(stats)}\n${memContext(60)}\nFind patterns in past mistakes and workflows that worked. Return ONLY JSON:\n{"lessons":["3-5 short rules in second person, each tied to a specific memory or stat"],"tweaks":[{"type":"session|hours|pref|priority","subject":"only for priority","value":"number of minutes (session) | hours per day (hours) | morning/afternoon/night (pref) | high/medium/low (priority)","why":"one line"}]}\nSuggest at most 3 tweaks and only when the data supports them.`,{modelTier:'default'});
+  const j=jsonFrom(r&&r.text);S.lessons={items:(j.lessons||[]).slice(0,5).map(String),tweaks:(j.tweaks||[]).slice(0,3),d:dkey()};HUB.memMsg='';save()}
+ catch(e){HUB.memMsg='The Helper couldn\'t finish - try again.'}render()}
+function applyTweak(i){const t=S.lessons&&S.lessons.tweaks[i];if(!t)return;const P=S.profile;let ok=true;
+ if(t.type==='session'){const v=+t.value;if(v>=15&&v<=120)P.block=r5(v);else ok=false}
+ else if(t.type==='hours'){const v=+t.value;if(v>=.5&&v<=14)P.hours=v;else ok=false}
+ else if(t.type==='pref'){if(['morning','afternoon','night'].includes(t.value))P.pref=t.value;else ok=false}
+ else if(t.type==='priority'){const s=S.subjects.find(x=>x.name.toLowerCase()===String(t.subject||'').toLowerCase());if(s&&['high','medium','low'].includes(t.value))s.priority=t.value;else ok=false}else ok=false;
+ if(!ok){toast('Can\'t apply','That tweak doesn\'t match your current setup.');return}t.applied=true;evt('Applied lesson tweak: '+t.type+' → '+t.value);save();render();toast('Tweak applied','Re-roll today\'s plan to use it now.')}
+
+function vHub(){
+ const k=dkey();const T=(today()?.tasks||[]).filter(t=>t.slot!=null).map(t=>({s:t.slot,e:t.slot+t.mins,title:t.title,q:t}));
+ const line=[...T,...(S.busy[k]||[]).map(b=>({s:b.s,e:b.e,title:b.title,cal:true}))].sort((a,b)=>a.s-b.s);
+ const st=HUB.status;const stTxt={ok:['Connected','free'],reauth:['Reconnect needed','paid'],missing:['Not connected','paid'],off:['Available inside Claude (claude.ai)','lt']}[st]||['Checking…','lt'];
+ const mems=S.mem.filter(m=>!HUB.filter||m.kind===HUB.filter).slice().reverse();
+ const P=HUB.preview;
+ return `<div class="vtitle"><div><h1>Command Block</h1><p>One place for your quests, calendar, Notion and everything the Helper has learned about how you work.</p></div></div>
+ <div class="split"><div class="stack">
+ <div class="panel dark"><div class="row between"><h2 style="margin:0">Today, all in one line</h2><span class="small muted">${esc(dayName(k))}</span></div>
+  ${line.length?`<table class="tbl" style="color:#f2f2f2">${line.map(x=>`<tr><td class="n" style="border-color:#3a3d4a">${fmtT(x.s)}</td><td style="border-color:#3a3d4a">${x.cal?'<span class="chip" style="background:#18a0a8">Calendar</span>':`<span class="chip ${x.q.type}">${TYPEN[x.q.type]}</span>`}</td><td style="border-color:#3a3d4a${x.q&&x.q.status==='done'?';text-decoration:line-through;opacity:.6':''}">${esc(x.title)}</td><td class="n" style="border-color:#3a3d4a">${fmtMin(x.e-x.s)}</td></tr>`).join('')}</table>`:'<p class="muted">Nothing scheduled yet.</p>'}
+ </div>
+ <div class="panel copper"><div class="row between"><h2 style="margin:0">Notion</h2><span class="chip ${stTxt[1]}">${stTxt[0]}</span></div>
+  <p class="small">Uses the Notion connector on your Claude account. Notion Calendar includes any Google or Outlook calendars you've linked there.</p>
+  <h3 style="margin-top:10px">Calendar</h3><div class="row"><button class="btn blue" data-act="calread">Read today's calendar</button><button class="btn cu" data-act="calpush">Put today's quests on my calendar</button></div>${HUB.calMsg?`<p class="small"><b>${esc(HUB.calMsg)}</b></p>`:''}
+  <h3 style="margin-top:14px">Daily log</h3><div class="row"><button class="btn go" data-act="nlog">Save today's log to Notion</button>${typeof S.notion.logs[k]==='string'&&safeUrl(S.notion.logs[k])?`<a class="btn sm" href="${esc(S.notion.logs[k])}" target="_blank" rel="noopener">Open today's log</a>`:''}</div>
+  <h3 style="margin-top:14px">Bring in from Notion</h3><div class="row" style="flex-wrap:nowrap"><input id="nq" placeholder="Search Notion: syllabus, study plan, notes…" value="${esc(HUB.q)}"><button class="btn" data-act="nsearch">Search</button></div>
+  ${HUB.nMsg?`<p class="small"><b>${esc(HUB.nMsg)}</b></p>`:''}
+  ${HUB.results.map((r,i)=>`<div class="trade"><div><b>${esc(r.title)}</b>${r.hl?`<div class="small muted">${esc(r.hl)}</div>`:''}</div><div class="row" style="flex:none">${r.url?`<a class="btn sm" href="${esc(r.url)}" target="_blank" rel="noopener">Open</a>`:''}<button class="btn sm go" data-act="nimp" data-i="${i}" data-as="plan" data-tip="Turn its subjects, chapters and deadlines into chests and goals">As subjects</button><button class="btn sm ench" data-act="nimp" data-i="${i}" data-as="mem" data-tip="Pull academic/work lessons into the Memory Book">As memories</button></div></div>`).join('')}
+ </div></div>
+ <div class="stack">
+ <div class="panel ench"><div class="row between"><h2 style="margin:0">${IC.book2(26)} Memory Book</h2><span class="small">${S.mem.length} memories</span></div>
+  <p class="small">Only academic and work memories go in here. Your quest reports add mistakes and what worked automatically. The Helper reads this before every suggestion.</p>
+  ${S.lessons&&S.lessons.items.length?`<div class="panel gold" style="margin:10px 0"><h3>Lessons from your past · ${esc(S.lessons.d)}</h3>${S.lessons.items.map(l=>`<p class="small">• ${esc(l)}</p>`).join('')}
+   ${(S.lessons.tweaks||[]).map((t,i)=>`<div class="trade small"><span><b>${esc(t.type)}${t.subject?' · '+esc(t.subject):''} → ${esc(t.value)}</b> <span class="muted">${esc(t.why||'')}</span></span><button class="btn sm go" data-act="tweak" data-i="${i}" ${t.applied?'disabled':''}>${t.applied?'Applied':'Apply'}</button></div>`).join('')}</div>`:''}
+  <div class="row"><button class="btn cu" data-act="lessons">${IC.golem(20)} Learn from my past</button><button class="btn" data-act="nmem">Pull from Notion Memory</button></div>
+  ${HUB.memMsg?`<p class="small"><b>${esc(HUB.memMsg)}</b></p>`:''}
+  ${P?`<div class="panel" style="margin-top:10px"><h3>Review before saving · from ${esc(P.source)}</h3><p class="small muted">${P.local?'Filtered by keywords (Claude unavailable) - check carefully.':`Kept ${P.items.length}${P.dropped!=null?`, dropped ${esc(P.dropped)} personal or off-topic items`:''}.`} Untick anything you don't want.</p>
+   ${P.items.map((x,i)=>`<label class="row small" style="gap:8px;font-weight:500;margin:4px 0;flex-wrap:nowrap"><input type="checkbox" id="pv${i}" ${x.on?'checked':''}><span class="chip ${MEMK[x.kind]?MEMK[x.kind][1]:'lt'}">${esc(MEMK[x.kind]?MEMK[x.kind][0]:x.kind)}</span><span>${esc(x.text)}</span></label>`).join('')||'<p>Nothing academic or work-related found.</p>'}
+   <div class="row" style="margin-top:8px"><button class="btn go" data-act="pvsave">Save selected</button><button class="btn" data-act="pvcancel">Discard</button></div></div>`:''}
+  <details style="margin-top:12px"><summary style="cursor:pointer;font-weight:700">Import memory from another AI</summary>
+   <p class="small">In ChatGPT, Gemini or Claude, ask: <i>"List everything you remember about me as bullet points."</i> Paste the answer here. Only academic and work items are kept, and you review them first.</p>
+   <select id="memSrc" aria-label="Source"><option>ChatGPT</option><option>Claude</option><option>Gemini</option><option>Copilot</option><option>Other AI</option></select>
+   <textarea id="memRaw" style="margin-top:8px;min-height:120px" placeholder="Paste the memory export here"></textarea><div style="margin-top:8px"><button class="btn ench" data-act="memimp">Filter and review</button></div></details>
+  <div class="row" style="margin-top:12px;flex-wrap:nowrap"><select id="mk" aria-label="Kind" style="width:auto">${Object.entries(MEMK).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('')}</select><input id="mt" placeholder="Add a memory, e.g. I lose marks on unit conversions"><button class="btn" data-act="memadd">Add</button></div>
+  <div class="row small" style="margin-top:10px">${[['','All'],...Object.entries(MEMK).map(([k,v])=>[k,v[0]])].map(([k,n])=>`<button class="btn sm ${HUB.filter===k?'ench':''}" data-act="memf" data-k="${k}">${n}</button>`).join('')}</div>
+  <div style="margin-top:8px;max-height:360px;overflow:auto">${mems.map(m=>{const s=m.subj&&subById(m.subj);return `<div class="trade small"><span><span class="chip ${MEMK[m.kind][1]}">${MEMK[m.kind][0]}</span> ${esc(m.text)} <span class="muted">· ${esc(m.source)}${s?' · '+esc(s.name):''} · ${esc(m.d.slice(5))}</span></span><button class="btn sm" data-act="memdel" data-id="${m.id}" aria-label="Forget">X</button></div>`}).join('')||'<p class="small muted">No memories yet. Finish a quest and fill in "What went wrong" or "What worked".</p>'}</div>
+ </div></div></div>`;
+}
+
+/* ================= Flow: chat-first command center ================= */
+let FLOW={busy:false,live:''},RECEIPTS=[],UNDOS={},PENDING_NAV=null,DICT=null,DICTON=false,DBASE='',DVOICE=false;
+const DAYW=['sun','mon','tue','wed','thu','fri','sat'];
+function dayLabel(d){const k=dkey();if(d===k)return 'Today';if(d===addDays(k,1))return 'Tomorrow';return new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric'})}
+function newTaskObj({title,type,sub,tp,mins,notes}){
+ type=TYPEN[type]?type:'task';if(!sub&&type==='test')type='task';
+ const t={id:uid(),sub:sub?sub.id:null,top:tp?tp.id:null,type,title:'',mins:r5(+mins||(type==='task'?30:dur(type==='task'?'learn':type))),slot:null,status:'todo',spent:0,focus:null,output:'',score:null,tip:'',how:'',src:'',user:true};
+ if(sub&&type!=='task'){t.how=howTo(type,sub,tp);t.src=srcFor(type,sub)}
+ else{t.how='1. Write the very first physical step (open the doc, find the form…).\n2. Press Start and do only that step.\n3. Keep going until done or the timer ends; note what you produced when you stop.';t.src='-'}
+ if(notes)t.how=String(notes).slice(0,500)+'\n\n'+t.how;
+ t.title=String(title||'').trim().slice(0,90)||(type==='test'?`Mock test: ${sub.name}`:tp?`${TYPEN[type]}: ${tp.name}`:sub?`Study session: ${sub.name}`:'Task');
+ return t}
+function ensureDay(k){if(!S.days[k])S.days[k]={tasks:[],settled:false,planned:false};return S.days[k]}
+function parseTime(s){const m=/^(\d{1,2}):(\d{2})/.exec(String(s||''));if(!m)return null;const v=(+m[1])*60+(+m[2]);return v>=0&&v<1440?v:null}
+function placeTask(t,k,time){const day=ensureDay(k);const v=parseTime(time);t.slot=v;if(v==null)assignSlots([t],k,day.tasks);day.tasks.push(t);day.tasks.sort((a,b)=>(a.slot??9999)-(b.slot??9999))}
+function findSubject(name){if(!name)return null;const n=String(name).toLowerCase().trim();return S.subjects.find(s=>s.name.toLowerCase()===n)||S.subjects.find(s=>s.name.toLowerCase().startsWith(n)||n.startsWith(s.name.toLowerCase()))||null}
+function toolAddTasks(inp){const k=dkey();const out=[];
+ (inp.tasks||[]).slice(0,40).forEach(x=>{let date=/^\d{4}-\d{2}-\d{2}$/.test(x.date||'')?x.date:k;if(date<k)date=k;if(date>addDays(k,60))date=addDays(k,60);
+  let sub=findSubject(x.subject);const type=TYPEN[x.type]?x.type:'task';
+  if(!sub&&x.subject&&type!=='task'){sub={id:uid(),name:String(x.subject).slice(0,60),score:null,sources:'',topics:[]};S.subjects.push(sub);RECEIPTS.push({t:'text',text:`New chest: ${sub.name}`})}
+  let tp=null;if(sub&&x.topic){tp=sub.topics.find(t=>t.name.toLowerCase()===String(x.topic).toLowerCase());if(!tp){tp=newTopic(String(x.topic).slice(0,80));sub.topics.push(tp)}}
+  const t=newTaskObj({title:x.title,type,sub,tp,mins:x.minutes,notes:x.notes});placeTask(t,date,x.time);RECEIPTS.push({t:'add',id:t.id});out.push({id:t.id,title:t.title,date,time:t.slot!=null?fmtT(t.slot):'unscheduled'})});
+ save();return out}
+function moveTask(id,date,time,mins,title){const [t,k]=findTask(id);if(!t)throw new Error('no such task');
+ if(title)t.title=String(title).slice(0,90);if(mins)t.mins=r5(+mins);
+ const nd=/^\d{4}-\d{2}-\d{2}$/.test(date||'')?(date<dkey()?dkey():date):k;
+ if(nd!==k||time!==undefined){S.days[k].tasks=S.days[k].tasks.filter(x=>x!==t);if(S.active&&S.active.id===id&&nd!==k)closeActive();t.reminded=false;t.calPushed=false;placeTask(t,nd,time)}
+ save();return {id,date:nd,time:t.slot!=null?fmtT(t.slot):'unscheduled'}}
+function stateForAI(){const k=dkey();const days=Array.from({length:7},(_,i)=>addDays(k,i));
+ return {today:k,next7days:days.map(d=>d+' '+new Date(d+'T12:00:00').toLocaleDateString('en',{weekday:'long'})),now:fmtT(nowMin()),timezone:TZ,
+  profile:{name:S.profile.name,hoursPerDay:S.profile.hours,dayStart:fmtT(S.profile.start*60),dayEnd:fmtT(S.profile.end*60),sessionMinutes:S.profile.block,sharpest:S.profile.pref},aim:S.intent,
+  subjects:S.subjects.map(s=>({name:s.name,priority:s.priority||null,topics:s.topics.map(t=>t.name+(t.status!=='new'?` [${t.status}]`:'')).slice(0,30)})),
+  goals:S.goals.filter(g=>!g.done).map(g=>({text:g.text,deadline:g.deadline||null})),
+  tasks:days.flatMap(d=>(S.days[d]?.tasks||[]).map(t=>({id:t.id,date:d,time:t.slot!=null?fmtT(t.slot):null,title:t.title,type:t.type,minutes:t.mins,status:t.status,subject:subById(t.sub)?.name||null}))),
+  calendarToday:(S.busy[k]||[]).map(b=>({title:b.title,from:fmtT(b.s),to:fmtT(b.e)})),runningTimer:S.active?(findTask(S.active.id)[0]||{}).title||null:null,strawBeds:S.inv.bed,memory:memContext(12)}}
+const VIEWIDS=()=>VIEWS.map(v=>v[0]);
+const FLOW_TOOLS=[
+ {name:'get_state',description:'Read the app: date, profile, subjects/topics, goals, tasks for the next 7 days (with ids), today\'s calendar, running timer, memory.',inputSchema:{type:'object',properties:{}},execute:()=>stateForAI()},
+ {name:'add_tasks',description:'Create tasks/quests. Put ALL tasks from one request in a single call.',inputSchema:{type:'object',properties:{tasks:{type:'array',items:{type:'object',properties:{title:{type:'string',description:'short action title, e.g. "Practice: Optics problems" or "Email APS office"'},type:{type:'string',enum:['learn','practice','revise','test','task'],description:'task = non-study work/errand'},subject:{type:'string',description:'existing subject name, or a new academic subject to create'},topic:{type:'string'},date:{type:'string',description:'YYYY-MM-DD, default today'},time:{type:'string',description:'HH:MM 24h, only if the user gave one'},minutes:{type:'number'},notes:{type:'string',description:'specific instructions/source for this task'}},required:['title','type']}}},required:['tasks']},execute:i=>toolAddTasks(i)},
+ {name:'update_task',description:'Move/reschedule/rename/resize a task by id.',inputSchema:{type:'object',properties:{id:{type:'string'},date:{type:'string'},time:{type:'string',description:'HH:MM 24h'},minutes:{type:'number'},title:{type:'string'}},required:['id']},execute:i=>{const r=moveTask(i.id,i.date,i.time,i.minutes,i.title);RECEIPTS.push({t:'add',id:i.id,moved:true});return r}},
+ {name:'remove_task',description:'Delete a task by id (only when the user asks).',inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id']},execute:i=>{const [t,k]=findTask(i.id);if(!t)throw new Error('no such task');if(S.active&&S.active.id===i.id)closeActive();S.days[k].tasks=S.days[k].tasks.filter(x=>x!==t);RECEIPTS.push({t:'text',text:'Removed: '+t.title});save();return 'removed'}},
+ {name:'start_task',description:'Start the timer on one of TODAY\'s tasks (when the user says start/begin).',inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id']},execute:i=>{const [t,k]=findTask(i.id);if(!t||k!==dkey())throw new Error('only today\'s tasks can start');startTask(i.id);RECEIPTS.push({t:'add',id:i.id});return 'started'}},
+ {name:'pause_timer',description:'Pause the running timer.',inputSchema:{type:'object',properties:{}},execute:()=>{if(!S.active)return 'nothing running';closeActive();save();RECEIPTS.push({t:'text',text:'Timer paused'});return 'paused'}},
+ {name:'replan_today',description:'Rebuild today\'s automatic quests around the user\'s own tasks.',inputSchema:{type:'object',properties:{}},execute:()=>{replan();RECEIPTS.push({t:'text',text:'Today re-planned'});return 'ok'}},
+ {name:'update_settings',description:'Change settings.',inputSchema:{type:'object',properties:{hoursPerDay:{type:'number'},sessionMinutes:{type:'number'},dayStartHour:{type:'number'},dayEndHour:{type:'number'},sharpest:{type:'string',enum:['morning','afternoon','night']},theme:{type:'string',enum:Object.keys(THEMES)}}},execute:i=>{const P=S.profile;if(i.hoursPerDay>=.5&&i.hoursPerDay<=14)P.hours=+i.hoursPerDay;if(i.sessionMinutes>=15&&i.sessionMinutes<=120)P.block=r5(i.sessionMinutes);if(i.dayStartHour>=0&&i.dayStartHour<24)P.start=Math.floor(i.dayStartHour);if(i.dayEndHour>0&&i.dayEndHour<=24)P.end=Math.floor(i.dayEndHour);if(i.sharpest)P.pref=i.sharpest;if(i.theme&&THEMES[i.theme]){S.theme=i.theme;applyTheme()}save();RECEIPTS.push({t:'text',text:'Settings updated'});return 'ok'}},
+ {name:'go_to',description:'Open a screen after replying.',inputSchema:{type:'object',properties:{view:{type:'string',enum:['flow','quests','chests','helper','hub','library','armory','stats','settings']}},required:['view']},execute:i=>{PENDING_NAV=i.view;return 'will open'}},
+ {name:'app_action',description:'Run an app feature: read_calendar (import today\'s events, quests avoid them), push_calendar (put today\'s quests on calendar; user confirms), save_notion_log, rest_day (use a straw bed; user confirms), learn_lessons (analyse past mistakes).',inputSchema:{type:'object',properties:{action:{type:'string',enum:['read_calendar','push_calendar','save_notion_log','rest_day','learn_lessons']}},required:['action']},execute:async i=>{const a=i.action;if(a==='read_calendar'){await readCalendar();return HUB.calMsg}if(a==='push_calendar'){pushCalendar();return 'asked user to confirm'}if(a==='save_notion_log'){await saveLog();return HUB.nMsg}if(a==='rest_day'){useBed();return 'asked user to confirm'}if(a==='learn_lessons'){await learnLessons();return S.lessons?S.lessons.items:'not enough history'}return 'unknown'}},
+ T_ADDGOAL,T_ADDSUB,T_MEMADD,T_SEARCH];
+function FLOW_SYS(){const st=stateForAI();return `You are Flow, the command assistant built into FlowCraft, a game-style study and work planner. The user is in control; you remove friction by ACTING with tools right away.
+- When the user says what they want to do (today, this week, specific days), turn it into concrete tasks with ONE add_tasks call. Split vague goals into sessions (e.g. "finish physics ch 3-5 this week" -> learn + practice sessions spread over days). Match their existing subjects/topics; name a new academic subject only when needed. Use type "task" for non-study work (errands, applications, emails, business work).
+- Respect their day window and ~${st.profile.hoursPerDay}h/day of study; avoid calendarToday; set a time only if they gave one or order matters. Default study length = ${st.profile.sessionMinutes} min.
+- You can also move, remove, start or pause tasks, replan today, change settings, add goals/subjects/memories, run calendar/Notion actions and open screens. Use ids from get_state.
+- Never mark tasks complete: the user finishes with Stop. Don't remove or skip anything unless asked.
+- Ask a question only if you truly cannot act; otherwise act and state any assumption in a few words.
+- Reply in 1-3 short sentences. Don't list the tasks you created; the app shows them as cards.
+Today ${st.today} (${new Date().toLocaleDateString('en',{weekday:'long'})}), now ${st.now}, ${st.timezone}. Call get_state first if you need ids or existing tasks.`}
+function parseQuick(text){const k=dkey();const out=[];
+ String(text).split(/\n|;|\band then\b|\bthen\b|,(?=\s*(?:and\s+)?[a-z])/i).map(x=>x.replace(/^\s*(and|also|i want to|i need to|i have to|i wanna|to)\s+/i,'').trim()).filter(x=>x.length>2).forEach(seg=>{
+  let date=k,time=null,mins=null,type='task';const lo=seg.toLowerCase();
+  const dm=lo.match(/\b(today|tonight|tomorrow|mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/);
+  if(dm){const w=dm[1];if(w.startsWith('tom'))date=addDays(k,1);else if(!w.startsWith('to')){const idx=DAYW.indexOf(w.slice(0,3));const cur=new Date(k+'T12:00:00').getDay();date=addDays(k,(idx-cur+7)%7||7)}}
+  const tm=lo.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/)||lo.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\b/);
+  if(tm){let h=+tm[1];if(tm[3]){h=h%12+(tm[3]==='pm'?12:0)}else if(h<8)h+=12;if(h<24)time=z(h)+':'+(tm[2]||'00')}
+  if(/tonight/.test(lo)&&!time)time='20:00';
+  const du=lo.match(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?|m|min|mins|minutes?)\b/);if(du)mins=/^h/.test(du[2])?+du[1]*60:+du[1];
+  if(/\b(revise|revision|review)\b/.test(lo))type='revise';else if(/\b(practi[cs]e|solve|questions|problems|exercises?)\b/.test(lo))type='practice';else if(/\b(mock|past paper)\b/.test(lo))type='test';else if(/\b(learn|study|read|chapter|lecture|watch)\b/.test(lo))type='learn';
+  let sub=S.subjects.find(x=>lo.includes(x.name.toLowerCase()));let topic=null;
+  if(!sub)for(const x of S.subjects){const tp=x.topics.find(t=>t.name.length>3&&lo.includes(t.name.toLowerCase()));if(tp){sub=x;topic=tp.name;break}}
+  if(sub&&type==='task')type='learn';
+  let title=seg.replace(/\b(today|tonight|tomorrow|on\s+\w+day|\w+day)\b/ig,'').replace(/\b(for\s+)?\d+(\.\d+)?\s*(h|hr|hrs|hours?|m|min|mins|minutes?)\b/ig,'').replace(/\b(at\s+)?\d{1,2}(:\d{2})?\s*(am|pm)\b/ig,'').replace(/\bat\s+\d{1,2}(:\d{2})?\b/ig,'').replace(/\s{2,}/g,' ').trim();
+  title=title.charAt(0).toUpperCase()+title.slice(1);
+  out.push({title,type:sub?type:'task',subject:sub?sub.name:null,topic,date,time,minutes:mins})});
+ return out}
+async function flowSend(text,quiet){
+ text=String(text||'').trim();if(!text||FLOW.busy)return;
+ const undo=JSON.stringify(S);RECEIPTS=[];PENDING_NAV=null;S.chat.push({role:'user',content:text});FLOW.busy=true;FLOW.live='';render();
+ const sample=await getSample();let reply='';
+ const local=()=>{const items=parseQuick(text);if(items.length)toolAddTasks({tasks:items});return items.length};
+ if(!sample){const n=local();reply=n?`Added ${n} task${n>1?'s':''} with quick-add. (The full AI assistant runs when FlowCraft is opened inside Claude.)`:'I couldn\'t find a task in that. Try: "Physics practice 40m at 5pm tomorrow".'}
+ else{const msgs=[{role:'user',content:FLOW_SYS()},{role:'assistant',content:'Ready.'},...S.chat.slice(-14).map(m=>({role:m.role,content:String(m.content||'.')}))];
+  try{const r=await sample(msgs,{modelTier:'default',cache:false,tools:FLOW_TOOLS,onText:({text})=>{FLOW.live=text;const el=$('#flowlive');if(el)el.textContent=text}});reply=(r&&r.text||'').trim()}
+  catch(e){if(!RECEIPTS.length){const n=local();reply=(e&&e.code==='rate_limited'?'Flow is busy for a moment, so ':'Flow couldn\'t reach Claude, so ')+(n?`I quick-added ${n} task${n>1?'s':''}.`:'nothing was added.')}else reply='Done (connection dropped before I could reply).'}}
+ const idx=S.chat.length;S.chat.push({role:'assistant',content:reply||'Done.',receipts:RECEIPTS.slice()});if(RECEIPTS.length)UNDOS[idx]=undo;
+ if(S.chat.length>40){const cut=S.chat.length-40;S.chat=S.chat.slice(cut);const nu={};for(const i in UNDOS)if(i-cut>=0)nu[i-cut]=UNDOS[i];UNDOS=nu}
+ FLOW.busy=false;FLOW.live='';save();
+ if(quiet){toast('Flow',reply||'Done.','',IC.cmd(26))}
+ if(PENDING_NAV&&VIEWIDS().includes(PENDING_NAV)){VIEW=PENDING_NAV;PENDING_NAV=null;window.scrollTo(0,0)}
+ render();if(VIEW==='flow'){const c=$('#fchat');if(c)c.scrollTop=c.scrollHeight}
+}
+function undoFlow(i){const u=UNDOS[i];if(!u)return;const chat=S.chat;S=migrate(JSON.parse(u));S.chat=chat;S.chat[i].undone=true;delete UNDOS[i];applyTheme();save();render();toast('Undone','Flow\'s changes were reverted.')}
+function webSpeech(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return null;let rec=null;const h={p:()=>{},f:()=>{},s:()=>{}};
+ return {onPartial(f){h.p=f},onFinal(f){h.f=f},onState(f){h.s=f},stop(){try{rec&&rec.stop()}catch(e){}return Promise.resolve()},
+  start(){return new Promise((res,rej)=>{try{rec=new SR();rec.continuous=true;rec.interimResults=true;rec.lang=navigator.language||'en-US';
+   rec.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)h.f({text:r[0].transcript.trim()});else interim+=r[0].transcript}h.p({text:interim.trim()})};
+   rec.onstart=()=>{h.s({state:'listening'});res()};rec.onend=()=>h.s({state:'idle',reason:'stopped'});rec.onerror=ev=>{if(ev.error==='not-allowed'||ev.error==='service-not-allowed')rej({code:'not_granted'})};rec.start()}catch(e){rej(e)}})}}}
+async function initDict(){try{DICT=window.claude&&claude.use?await claude.use('dictation'):null}catch(e){DICT=null}if(!DICT&&!window.claude)DICT=webSpeech();
+ if(DICT){try{DICT.onPartial(({text})=>{const i=$('#fin');if(i)i.value=(DBASE+' '+text).trim()});DICT.onFinal(({text})=>{DBASE=(DBASE+' '+text).trim();const i=$('#fin');if(i)i.value=DBASE});
+  DICT.onState(({state})=>{const was=DICTON;DICTON=state==='listening';const b=$('#mic');if(b){b.classList.toggle('on',DICTON);b.setAttribute('aria-pressed',String(DICTON));b.lastChild.textContent=DICTON?' Listening… tap to stop':' Speak'}
+   if(was&&!DICTON&&DVOICE){DVOICE=false;const i=$('#fin');const t=i?i.value.trim():DBASE;if(t&&S&&S.profile.voiceSend!==false){if(i)i.value='';flowSend(t,VIEW!=='flow')}}})}catch(e){DICT=null}}
+ if(S&&(VIEW==='flow'||VIEW==='chests'))render()}
+function micClick(){if(!DICT)return;if(DICTON){DICT.stop().catch(()=>{});return}const i=$('#fin');DBASE=i?i.value.trim():'';DVOICE=true;
+ DICT.start().catch(err=>{DVOICE=false;if(err&&err.code==='not_granted'){DICT=null;toast('Microphone not allowed','Typing works just as well.');render()}})}
+function receiptHtml(r){
+ if(r.t==='text')return `<div class="receipt small">${IC.check(16)} ${esc(r.text)}</div>`;
+ const [t,k]=findTask(r.id);if(!t)return `<div class="receipt small muted">Task no longer exists</div>`;
+ const isToday=k===dkey();const act=S.active&&S.active.id===t.id;
+ return `<div class="receipt ${t.type}"><span class="chip ${t.type}">${TYPEN[t.type]}</span><b style="flex:1;min-width:140px">${esc(t.title)}</b><span class="small">${esc(dayLabel(k))} · ${fmtT(t.slot)} · ${t.mins}m${r.moved?' · moved':''}</span>
+ ${t.status==='done'?'<span class="chip free">done</span>':act?'<span class="chip practice">running</span>':isToday&&(t.status==='todo'||t.status==='doing')?`<button class="btn sm go" data-act="start" data-id="${t.id}">Start</button>`:''}<button class="btn sm" data-act="editt" data-id="${t.id}" aria-label="Edit task">Edit</button></div>`}
+function vFlow(){
+ const k=dkey();const T=today()?.tasks||[];const h=new Date().getHours();
+ const greet=h<5?'Up late':h<12?'Good morning':h<17?'Good afternoon':h<22?'Good evening':'Up late';
+ const A=S.active&&findTask(S.active.id)[0];const nm=nowMin();
+ const nextT=T.filter(t=>t.status==='todo'||t.status==='doing').sort((a,b)=>(a.slot??9999)-(b.slot??9999)).slice(0,5);
+ const done=T.filter(t=>t.status==='done').length;
+ const week=Array.from({length:7},(_,i)=>addDays(k,i)).map(d=>{const ts=S.days[d]?.tasks||[];return {d,n:ts.length,m:ts.reduce((a,t)=>a+t.mins,0)}});
+ const chips=['Plan my day','Plan my week around my goals','I have 1 hour free right now','Move everything after 8 pm to tomorrow','What should I do next?','Start my next task'];
+ const msgs=S.chat.map((m,i)=>m.role==='user'?`<div class="msg me">${esc(m.content)}</div>`:`<div class="msg ai">${esc(m.content)}${(m.receipts||[]).length&&!m.undone?`<div style="margin-top:6px">${m.receipts.map(receiptHtml).join('')}</div>${UNDOS[i]?`<button class="btn sm" data-act="fundo" data-i="${i}" style="margin-top:6px">Undo</button>`:''}`:''}${m.undone?'<div class="small muted">(undone)</div>':''}</div>`).join('');
+ return `<div class="vtitle"><div><h1>${greet}, ${esc(S.profile.name)}</h1><p>Say or type what you want to get done - today, this week, whenever. Flow sorts it into your chests so you just press Start.</p></div>
+ <div class="row"><span class="chip lt">${done}/${T.length} today</span>${S.streak?`<span class="chip test">${S.streak}-day streak</span>`:''}</div></div>
+ <div class="flowgrid"><div class="panel flowmain">
+  <div class="chat fchat" id="fchat">${msgs||`<div class="msg ai">Hi! Tell me your plans like you'd tell a friend:\n"Today: physics practice on optics, revise German verbs 30 min, email the APS office. Tomorrow 2 hours of maths."\nI'll turn it into tasks with times.</div>`}${FLOW.busy?`<div class="msg ai" id="flowlive">${esc(FLOW.live||'Sorting your tasks…')}</div>`:''}</div>
+  <div class="cmdbar"><label class="sr" for="fin">What do you want to do?</label><textarea id="fin" placeholder="e.g. Today finish 20 optics problems, revise German A2 verbs for 30 min, and send the APS documents. Mock test Saturday morning." ${FLOW.busy?'disabled':''}></textarea>
+   <div class="cmdbtns">${DICT?`<button class="btn mic ${DICTON?'on':''}" id="mic" data-act="mic" aria-pressed="${DICTON}">${IC.mic(22)}<span> ${DICTON?'Listening… tap to stop':'Speak'}</span></button>`:''}<button class="btn go" data-act="fsend" ${FLOW.busy?'disabled':''}>Send</button></div></div>
+  <div class="row small fchips" style="margin-top:8px">${chips.map(c=>`<button class="btn sm" data-act="fchip" data-q="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+ </div>
+ <div class="stack">
+  ${A?`<div class="panel dark"><h3>Running</h3><div style="font-weight:700;font-size:20px">${esc(A.title)}</div><div class="big" id="tbig" style="font-family:'Press Start 2P';color:#80ff20;font-size:28px;margin:8px 0">${fmtDur(spentOf(A))}</div><div class="row"><button class="btn" data-act="pause">Pause</button><button class="btn red" data-act="stop" data-id="${A.id}">Stop</button></div></div>`:''}
+  <div class="panel"><div class="row between"><h2 style="margin:0">Up next today</h2><button class="btn sm" data-view="quests">All quests</button></div>
+   ${nextT.length?nextT.map(t=>`<div class="trade"><div style="flex:1"><span class="chip ${t.type}">${TYPEN[t.type]}</span> <b>${esc(t.title)}</b><div class="small muted">${fmtT(t.slot)} · ${t.mins}m${subById(t.sub)?' · '+esc(subById(t.sub).name):''}</div></div>${S.active&&S.active.id===t.id?'<span class="chip practice">running</span>':`<button class="btn sm go" data-act="start" data-id="${t.id}">${t.spent?'Resume':'Start'}</button>`}</div>`).join(''):'<p class="small">Nothing left today. Tell Flow what\'s next.</p>'}</div>
+  <div class="panel stone"><div class="row between"><h3 style="margin:0">This week</h3><button class="btn sm" data-view="chests">Open manager</button></div>
+   <div class="weekmini">${week.map(w=>`<button class="wm ${w.d===k?'on':''}" data-view="chests" data-tip="${w.n} tasks · ${fmtMin(w.m)}"><b>${esc(dayLabel(w.d).replace('Tomorrow','Tmrw'))}</b><span>${w.n}</span></button>`).join('')}</div></div>
+ </div></div>`;
+}
+function vWeek(){const k=dkey();const days=Array.from({length:7},(_,i)=>addDays(k,i));
+ return `<div class="panel" style="margin-bottom:16px"><div class="row between"><h2 style="margin:0">Task manager · next 7 days</h2><span class="small muted">Tap a task to edit or move it. Auto quests are added each morning around your own tasks.</span></div>
+ <div class="cmdbar" style="margin-top:10px"><label class="sr" for="fin">Quick add</label><textarea id="fin" style="min-height:48px" placeholder="Quick add: e.g. German vocab 20m tonight, chemistry mock test Saturday 10am"></textarea><div class="cmdbtns">${DICT?`<button class="btn mic ${DICTON?'on':''}" id="mic" data-act="mic" aria-pressed="${DICTON}">${IC.mic(22)}<span> ${DICTON?'Listening…':'Speak'}</span></button>`:''}<button class="btn go" data-act="fquick" ${FLOW.busy?'disabled':''}>${FLOW.busy?'Sorting…':'Add'}</button></div></div>
+ <div class="week">${days.map(d=>{const ts=(S.days[d]?.tasks||[]).slice().sort((a,b)=>(a.slot??9999)-(b.slot??9999));const m=ts.reduce((a,t)=>a+t.mins,0);
+  return `<div class="wday ${d===k?'on':''}"><div class="row between"><b>${esc(dayLabel(d))}</b><span class="small">${fmtMin(m)}</span></div>
+  ${ts.map(t=>{const act=S.active&&S.active.id===t.id;return `<div class="wt ${t.type} ${t.status}"><button class="wtb" data-act="editt" data-id="${t.id}"><span class="small"><b>${fmtT(t.slot)}</b> · ${t.mins}m</span><span>${esc(t.title)}</span></button>${d===k&&(t.status==='todo'||t.status==='doing')?(act?'<span class="chip practice">running</span>':`<button class="btn sm go" data-act="start" data-id="${t.id}" aria-label="Start ${esc(t.title)}">Start</button>`):t.status==='done'?IC.check(18):''}</div>`}).join('')||'<p class="small muted">Free</p>'}
+  <button class="btn sm" data-act="addq" data-date="${d}" style="width:100%;margin-top:6px">+ Add</button></div>`}).join('')}</div></div>`}
+function editTask(id){const [t,k]=findTask(id);if(!t)return;
+ modal(`<div class="panel modal"><h2>Edit task</h2><label for="etT">Title</label><input id="etT" value="${esc(t.title)}">
+ <div class="grid3"><div><label for="etD">Day</label><input id="etD" type="date" value="${k}" min="${dkey()}"></div><div><label for="etH">Time</label><input id="etH" type="time" value="${t.slot!=null?z(Math.floor(t.slot/60))+':'+z(t.slot%60):''}"></div><div><label for="etM">Minutes</label><input id="etM" type="number" min="5" max="300" value="${t.mins}"></div></div>
+ <p class="small muted">${TYPEN[t.type]}${subById(t.sub)?' · '+esc(subById(t.sub).name):''} · ${t.status}</p>
+ <div class="row between" style="margin-top:14px"><div class="row"><button class="btn go" data-act="etsave" data-id="${t.id}">Save</button>${k===dkey()&&(t.status==='todo'||t.status==='doing')?`<button class="btn blue" data-act="etstart" data-id="${t.id}">Start now</button>`:''}<button class="btn" data-act="close">Cancel</button></div><button class="btn red" data-act="etdel" data-id="${t.id}">Delete</button></div></div>`)}
+
+/* ================= view: Library ================= */
+function vLibrary(){
+ const subjects=[...new Set(CAT.map(c=>c.subject))].sort();const types=[...new Set(CAT.map(c=>c.type))].sort();
+ const F=LIBF;const words=F.q.toLowerCase().split(/\s+/).filter(Boolean);
+ let list=CAT.filter(c=>{const hay=(c.title+' '+c.provider+' '+c.tags+' '+c.desc+' '+c.subject).toLowerCase();return words.every(w=>hay.includes(w))&&(!F.subj||c.subject===F.subj)&&(!F.type||c.type===F.type)&&(!F.cost||(F.cost==='free'?/^free/i.test(c.cost):!/^free$/i.test(c.cost)))});
+ const rank=S.rank&&S.rank.ids||[];const lvO={'Beginner':0,'All levels':1,'Intermediate':2,'Advanced':3,'-':4};
+ const sorters={rank:(a,b)=>(rank.indexOf(a.id)<0?999:rank.indexOf(a.id))-(rank.indexOf(b.id)<0?999:rank.indexOf(b.id))||(S.maps.includes(b.id)-S.maps.includes(a.id)),az:(a,b)=>a.title.localeCompare(b.title),level:(a,b)=>(lvO[a.level]??2)-(lvO[b.level]??2),free:(a,b)=>(/^free$/i.test(b.cost)-/^free$/i.test(a.cost))};
+ list.sort(sorters[F.sort]||sorters.rank);
+ const opt=(arr,cur,all)=>`<option value="">${all}</option>`+arr.map(x=>`<option ${cur===x?'selected':''}>${esc(x)}</option>`).join('');
+ return `<div class="vtitle"><div><h1>Library</h1><p>${CAT.length} real courses, textbooks, official pages and past papers. Filter, sort, or let the Helper rank them for your aim.</p></div><button class="btn cu" data-act="rank">${IC.golem(20)} Rank for my aim</button></div>
+ <div class="panel stone" style="margin-bottom:14px"><div class="filters"><input id="lq" placeholder="Search: german b1, calculus, studienkolleg…" value="${esc(F.q)}" aria-label="Search">
+ <select id="ls" aria-label="Subject">${opt(subjects,F.subj,'All subjects')}</select><select id="lt" aria-label="Type">${opt(types,F.type,'All types')}</select>
+ <select id="lc" aria-label="Cost"><option value="">Any cost</option><option value="free" ${F.cost==='free'?'selected':''}>Free</option><option value="paid" ${F.cost==='paid'?'selected':''}>Paid / exam fee</option></select>
+ <select id="lo" aria-label="Sort"><option value="rank" ${F.sort==='rank'?'selected':''}>Helper's ranking</option><option value="az" ${F.sort==='az'?'selected':''}>A-Z</option><option value="level" ${F.sort==='level'?'selected':''}>Easiest first</option><option value="free" ${F.sort==='free'?'selected':''}>Free first</option></select></div>
+ ${S.rank?`<p class="small" style="margin-top:8px"><b>Helper's take:</b> ${esc(S.rank.note||'')}</p>`:''}</div>
+ <div class="lib">${list.map(c=>{const ri=rank.indexOf(c.id);const why=S.rank&&S.rank.why&&S.rank.why[c.id];return `<div class="panel card"><div class="shelf"></div>
+  <div class="row between" style="gap:6px"><span class="chip lt">${esc(c.subject)}</span>${ri>=0&&ri<5?`<span class="pick">Helper pick #${ri+1}</span>`:''}${S.maps.includes(c.id)?`<span class="chip" style="background:#6b4f2a">${IC.map(14)} map</span>`:''}</div>
+  <h3>${esc(c.title)}</h3><div class="small muted">${esc(c.provider)} · ${esc(c.type)} · ${esc(c.level)}</div><p class="small">${esc(c.desc)}</p>${why?`<p class="small" style="color:#a54f2a"><b>Why:</b> ${esc(why)}</p>`:''}
+  <div class="row"><span class="chip ${/^free/i.test(c.cost)?'free':'paid'}">${esc(c.cost)}</span></div>
+  <div class="row" style="margin-top:4px"><a class="btn sm blue" href="${esc(c.url)}" target="_blank" rel="noopener">Open site</a><select data-act="libadd" data-id="${c.id}" aria-label="Add to subject" style="flex:1;min-height:38px;font-size:15px"><option value="">Add to chest…</option>${S.subjects.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}<option value="__new">+ New subject "${esc(c.subject)}"</option></select></div></div>`}).join('')||'<div class="panel empty">Nothing matches. Clear a filter.</div>'}</div>`;
+}
+async function rankLib(){
+ const sample=await getSample();if(!sample){toast('Helper unavailable','Ranking works when FlowCraft is opened inside Claude (claude.ai).');return}
+ if(!S.intent&&!S.goals.length){toast('Tell the Helper your aim','Write it on the Copper Helper tab first.');return}
+ toast('Sorting…','The Copper Helper is ranking the library for you.','',IC.golem(28));
+ try{const r=await sample(`Rank these study resources for this student. Aim: ${S.intent}. World: ${JSON.stringify(worldSummary())}.\nResources: ${JSON.stringify(CAT.map(c=>({id:c.id,t:c.title,s:c.subject,lv:c.level,cost:c.cost,type:c.type})))}\nReply ONLY JSON: {"note":"one sentence on what to start with","ids":["all relevant ids, most useful first (max 20)"],"why":{"id":"short reason, for the top 8 only"}}`,{modelTier:'default'});
+  const j=jsonFrom(r&&r.text);S.rank={ids:(j.ids||[]).filter(catById),why:j.why||{},note:j.note||''};LIBF.sort='rank';save();render()}
+ catch(e){toast('Helper unavailable','Could not rank right now - try again.')}
+}
+
+/* ================= view: Armory ================= */
+function vArmory(){
+ const L=lvl();const score=PIECES.reduce((a,[k])=>a+S.armor[k].t*3+S.armor[k].prot+S.armor[k].fort,0);
+ const pieces=PIECES.map(([k,n])=>{const a=S.armor[k];const nt=a.t+1;
+  const cost=nt===1?`${UPC[1]} copper ingot`:`${UPC[nt]} diamonds${nt===5?' + 1 netherite ingot':''}`;
+  const canUp=nt<TIERS.length&&(nt===1?S.inv.cu>=UPC[1]:S.inv.dia>=UPC[nt])&&(nt<5||S.inv.ingot>=1);
+  const ench=e=>{const nx=a[e]+1;const nm=e==='prot'?'Protection':'Fortune';return nx>3?`<button class="btn sm ench" disabled>${nm} III (max)</button>`:`<button class="btn sm ench" data-act="ench" data-k="${k}" data-e="${e}" ${L>=nx&&S.inv.lap>=nx?'':'disabled'} data-tip="Costs ${nx} level${nx>1?'s':''} + ${nx} lapis">${nm} ${['','I','II','III'][nx]}</button>`};
+  return `<div class="piece"><div class="slot">${pieceIcon(k,44)}</div><div><div style="font-size:21px;font-weight:700">${TIERS[a.t][0]} ${n}</div><div class="small enchl">${[a.prot?'Protection '+['','I','II','III'][a.prot]:'',a.fort?'Fortune '+['','I','II','III'][a.fort]:''].filter(Boolean).join(' · ')||'<span class="muted" style="color:#555;font-weight:400">No enchantments</span>'}</div></div>
+  <div class="row">${nt<TIERS.length?`<button class="btn sm ${nt===1?'cu':'go'}" data-act="up" data-k="${k}" ${canUp?'':'disabled'}>Craft ${TIERS[nt][0]} · ${cost}</button>`:''}${ench('prot')}${ench('fort')}</div></div>`}).join('');
+ const ev=S.events.slice(-12).reverse().map(e=>`<tr><td class="n">${esc(e.d.slice(5))}</td><td>${esc(e.text)}</td></tr>`).join('');
+ const trades=[['lap',`${IC.eme(24)} 1`,`${IC.lap(24)} 3 lapis`,S.inv.eme>=1],['eme',`${IC.dia(24)} 6`,`${IC.eme(24)} 1 emerald`,S.inv.dia>=6],['cu',`${IC.dia(24)} 1`,`${IC.cu(24)} 3 copper`,S.inv.dia>=1],['bed',`${IC.eme(24)} 2`,`${IC.bed(24)} 1 straw bed`,S.inv.eme>=2],['ingot',`${IC.eme(24)} 3`,`${IC.ingot(24)} 1 netherite ingot`,S.inv.eme>=3]];
+ return `<div class="vtitle"><div><h1>Armory</h1><p>Finish quests for ore. Every quest left unfinished at midnight cracks a piece down a tier.</p></div></div>
+ <div class="armory"><div class="stack"><div class="panel" style="padding:0"><div class="hero">${hero(140)}<div class="gr"></div></div></div>
+ <div class="panel"><h3>Gear score ${score}</h3><p class="small">Level ${L} · ${S.inv.xp} XP. Tiers: Leather → Copper → Iron → Gold → Diamond → Netherite. Protection absorbs one crack per level. Fortune gives an 8% chance per level to double diamonds.</p>
+ <label for="skin">Skin</label><select id="skin" data-act="skin">${Object.keys(SKINS).map(s=>`<option ${S.skin===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+ <div class="stack"><div class="panel stone"><h2>Equipment</h2>${pieces}</div>
+ <div class="panel leaf"><h2>Wandering trader</h2>${trades.map(([t,a,b,ok])=>`<div class="trade"><span class="row">${a} → ${b}</span><button class="btn sm go" data-act="trade" data-t="${t}" ${ok?'':'disabled'}>Trade</button></div>`).join('')}<p class="small">Emeralds: 1 per perfect day, +3 and a netherite ingot every 7-day streak.</p></div>
+ <div class="panel"><h2>Battle log</h2>${ev?`<table class="tbl">${ev}</table>`:'<p>Nothing yet.</p>'}</div></div></div>`;
+}
+
+/* ================= view: Stats ================= */
+function vStats(){
+ const H=hourStats();const tot=H.reduce((a,b)=>a+b.m,0);
+ const ranked=H.map((h,i)=>({i,m:h.m,f:h.m?h.w/h.m:0})).filter(h=>h.m>=15).sort((a,b)=>b.f*Math.log(1+b.m)-a.f*Math.log(1+a.m));
+ const peak=ranked.slice(0,3).map(r=>fmtT(r.i*60).replace(':00','')).join(', ');
+ const k=dkey();const last7=addDays(k,-6);const bySub={};S.log.forEach(L=>{if(dkey(new Date(L.s))>=last7)bySub[L.sub]=(bySub[L.sub]||0)+(L.e-L.s)/6e4});const maxS=Math.max(1,...Object.values(bySub));
+ const d14=Array.from({length:14},(_,i)=>addDays(k,i-13));const perDay={};S.log.forEach(L=>{const d=dkey(new Date(L.s));perDay[d]=(perDay[d]||0)+(L.e-L.s)/6e4});const maxD=Math.max(30,...d14.map(d=>perDay[d]||0));
+ const A=all(S);const fin=A.filter(t=>t.status==='done').length,miss=A.filter(t=>t.status==='missed'||t.status==='skipped').length;
+ const hr=Array.from({length:19},(_,i)=>i+5);const C=['#3b63d8','#c8322b','#3faa36','#e3a812','#8e4fd6','#e07a4a','#18a0a8'];
+ const recent=S.log.slice(-10).reverse().map(L=>{const [t]=findTask(L.id);return `<tr><td class="n">${new Date(L.s).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</td><td>${esc(t?t.title:'Quest')}</td><td class="n">${fmtMin((L.e-L.s)/6e4)}</td><td class="n">${L.f??'-'}</td></tr>`}).join('');
+ const got=Object.keys(S.adv).length;
+ return `<div class="vtitle"><div><h1>Stats</h1><p>${fmtMin(tot)} logged · ${fin} quests done · ${miss} missed or skipped</p></div></div>
+ <div class="split"><div class="stack">
+ <div class="panel"><h2>Your best hours</h2><p>${tot<120?'Log about 2 hours with Start/Stop and this map learns when you focus best. Until then the planner uses the time of day you picked.':`Peak focus: <b>${esc(peak||'-')}</b>. Your hardest quests go here.`}</p>
+ <div class="heat" style="margin-top:10px">${hr.map(i=>{const h=H[i];const f=h.m?h.w/h.m:0;const a=h.m?clamp(.2+Math.min(1,h.m/120)*.8,0,1):0;return `<div style="background:${h.m?`hsla(${(f-1)/4*130},75%,48%,${a})`:'#cfc3a8'}" data-tip="${fmtT(i*60)}: ${fmtMin(h.m)}, focus ${f?f.toFixed(1):'-'}"></div>`}).join('')}</div>
+ <div class="heat">${hr.map(i=>`<span>${i%3===2||i===5?((i%12)||12)+(i<12?'a':'p'):''}</span>`).join('')}</div><p class="small muted">Colour = average focus (red low, green high). Strength = minutes logged.</p></div>
+ <div class="panel stone"><h2>Last 14 days</h2><div class="cols">${d14.map(d=>`<div class="${d===k?'today':''}" style="height:${(perDay[d]||0)/maxD*100}%" data-tip="${d}: ${fmtMin(perDay[d]||0)}"></div>`).join('')}</div><div class="colsl">${d14.map((d,i)=>`<span>${i%2?'':esc(d.slice(8))}</span>`).join('')}</div></div>
+ <div class="panel gold"><h2>Advancements ${got}/${ADV.length}</h2><div class="advs">${ADV.map(([id,t,d])=>`<div class="adv ${S.adv[id]?'':'off'}">${IC.book2(24)}<div><b>${esc(t)}</b><div class="small">${esc(d)}</div></div></div>`).join('')}</div></div>
+ </div><div class="stack">
+ <div class="panel"><h2>This week by subject</h2><div class="bars">${S.subjects.map((s,i)=>`<div class="bar"><span>${esc(s.name)}</span><div class="tr"><i style="width:${(bySub[s.id]||0)/maxS*100}%;background:${C[i%C.length]}"></i></div><span class="n">${fmtMin(bySub[s.id]||0)}</span></div>`).join('')||'<p>No subjects.</p>'}</div></div>
+ <div class="panel stone"><h2>Time estimates</h2><p class="small">How long each quest type really takes you vs. plan. The planner resizes quests to match.</p><div class="bars">${STUDYT.map(t=>`<div class="bar"><span>${TYPEN[t]}</span><div class="tr"><i style="width:${clamp(S.factor[t]/2*100,0,100)}%;background:${S.factor[t]>1.1?'#c8322b':S.factor[t]<.9?'#3faa36':'#3b63d8'}"></i></div><span class="n">${S.factor[t].toFixed(2)}×</span></div>`).join('')}</div></div>
+ <div class="panel ench"><h2>Ask the Sage</h2><p class="small">Claude reads these stats and your aim and gives you a short game plan.</p><button class="btn ench" data-act="sage">${IC.book2(18)} Get advice</button><div id="sageOut"></div></div>
+ </div></div>
+ <div class="panel" style="margin-top:16px"><h2>Recent sessions</h2>${recent?`<table class="tbl"><tr><th>When</th><th>Quest</th><th>Time</th><th>Focus</th></tr>${recent}</table>`:'<p>No sessions yet. Press Start on a quest.</p>'}</div>`;
+}
+async function askSage(){
+ const out=$('#sageOut');const sample=await getSample();if(!sample){out.innerHTML='<div class="msg ai" style="max-width:100%;margin-top:10px">Advice needs FlowCraft opened inside Claude (claude.ai).</div>';return}
+ const H=hourStats();const sum=Object.assign(worldSummary(),{minutesByHour:H.map((h,i)=>h.m?{hour:i,min:Math.round(h.m),focus:+(h.w/h.m).toFixed(1)}:null).filter(Boolean),timeFactor:S.factor,missedOrSkipped:all(S).filter(t=>t.status==='missed'||t.status==='skipped').length});
+ out.innerHTML='<div class="msg ai" style="max-width:100%;margin-top:10px">The Sage is thinking…</div>';const box=out.firstChild;
+ try{const r=await sample(`You are a blunt, kind study coach. Today ${dkey()}. Student data: ${JSON.stringify(sum)}\nPlain-text game plan under 170 words: 1) the single biggest risk to their aim, 2) three specific changes for this week (subjects, hours, method), 3) one thing they're doing well. No markdown headers.`,{modelTier:'default',onText:({text})=>{box.textContent=text}});box.textContent=(r&&r.text||'').trim()}
+ catch(e){box.textContent=e&&e.code==='rate_limited'?'The Sage needs a minute.':'Could not reach Claude just now.'}
+}
+
+/* ================= view: Settings ================= */
+function hourOpts(sel){return Array.from({length:24},(_,i)=>`<option value="${i}" ${+sel===i?'selected':''}>${fmtT(i*60)}</option>`).join('')}
+function themePicker(cur){return `<div class="themes">${Object.entries(THEMES).map(([k,t])=>`<button class="theme ${cur===k?'on':''}" data-act="theme" data-t="${k}" type="button"><div class="sw" style="background:linear-gradient(180deg,${t.fixedSky?t.fixedSky[1]:'#7ec3ff'} 0 50%,${t.grass[0]} 50% 64%,#866043 64%)"></div><span>${esc(t.name)}</span></button>`).join('')}</div>`}
+function vSettings(){const P=S.profile;
+ return `<div class="vtitle"><div><h1>Settings</h1><p>Biome, schedule, sound and backups.</p></div></div><div class="split"><div class="stack">
+ <div class="panel leaf"><h2>Biome</h2>${themePicker(S.theme)}</div>
+ <div class="panel"><h2>Player</h2><div class="grid2"><div><label for="pN">Name</label><input id="pN" value="${esc(P.name)}"></div><div><label for="pC">Studying</label><input id="pC" value="${esc(P.course)}"></div></div>
+ <div class="grid2"><div><label for="pH">Study hours per day</label><input id="pH" type="number" min="0.5" max="14" step="0.5" value="${P.hours}"></div><div><label for="pB">Session length (min)</label><select id="pB">${[25,30,45,50,60,90].map(m=>`<option ${P.block===m?'selected':''}>${m}</option>`).join('')}</select></div></div>
+ <div class="grid2"><div><label for="pS">Day starts</label><select id="pS">${hourOpts(P.start)}</select></div><div><label for="pE">Day ends</label><select id="pE">${hourOpts(P.end)}</select></div></div>
+ <label for="pP">When do you feel sharpest?</label><select id="pP">${['morning','afternoon','night'].map(x=>`<option ${P.pref===x?'selected':''}>${x}</option>`).join('')}</select>
+ <label class="row" style="gap:8px"><input type="checkbox" id="pSnd" ${P.sound!==false?'checked':''}> Sound effects</label>
+ <label class="row" style="gap:8px"><input type="checkbox" id="pLea" ${S.showLeather?'checked':''}> Show leather armor on character</label>
+ <div style="margin-top:14px"><button class="btn go" data-act="saveprof">Save</button></div></div></div>
+ <div class="stack"><div class="panel ench"><h2>AI connection (your own website)</h2><p class="small">Inside Claude this isn't needed. On your deployed site, paste your free Groq proxy (Cloudflare Worker) here to switch on Flow AI, the Copper Helper and the Sage. Saved only in this browser.</p>
+ <label for="aiU">Worker URL</label><input id="aiU" placeholder="https://flowcraft-ai.yourname.workers.dev" value="${esc((aiCfg()||{}).url||'')}">
+ <label for="aiP">Passcode</label><input id="aiP" type="password" value="${esc((aiCfg()||{}).pass||'')}">
+ <div class="row" style="margin-top:10px"><button class="btn go" data-act="aisave">Save</button><button class="btn" data-act="aitest">Test connection</button><button class="btn sm" data-act="aiclear">Remove</button></div><div id="aiMsg" class="small" style="margin-top:6px"></div></div>
+ <div class="panel stone"><h2>Backup</h2><p class="small">Your save syncs to your Claude account on this page. You can also copy a backup.</p><div class="row"><button class="btn" data-act="export">Copy backup</button><button class="btn" data-act="import">Restore backup</button></div></div>
+ <div class="panel"><h2>How the planner thinks</h2><p class="small">Each morning it scores every topic: goal deadlines, weak marks, reviews due (spaced 1·3·7·14·30 days), how long a chest has oxidised, and the priority the Helper gave each subject. It fills your study hours, mixes subjects, sizes quests from how long you really take, and puts the hardest work in your best hours.</p></div>
+ <div class="panel copper"><h2>Danger zone</h2><p class="small">Start a brand-new world. Everything is erased.</p><button class="btn red" data-act="reset">Reset world</button></div></div></div>`}
+
+/* ================= onboarding ================= */
+function renderWizard(){
+ $('#top').hidden=true;$('#hud').hidden=true;
+ if(!W)W={step:0,d:{name:'',course:'',intent:'',raw:'',subjects:[],goals:[],hours:4,start:7,end:22,pref:'morning',block:45,theme:'dappled',skin:'student'}};
+ const d=W.d,st=W.step,N=5;const bar=`<div class="steps">${Array.from({length:N},(_,i)=>`<i class="${i<=st?'on':''}"></i>`).join('')}</div>`;let body='';
+ if(st===0)body=`<div style="text-align:center;margin-bottom:10px"><div class="logo" style="font-size:clamp(22px,5vw,38px)">Flow<b>Craft</b></div><div class="splash" style="margin-top:8px">Create new world!</div></div>
+  <label for="wN">Player name</label><input id="wN" value="${esc(d.name)}" placeholder="Your name">
+  <label for="wC">What are you studying now?</label><input id="wC" value="${esc(d.course)}" placeholder="e.g. Class 12 PCM, gap year, first-year engineering">
+  <label for="wI">What are you trying to achieve? (the Copper Helper reads this)</label><textarea id="wI" style="min-height:100px" placeholder="e.g. Bachelor's in engineering in Germany via Studienkolleg, start winter 2027">${esc(d.intent)}</textarea>
+  <label>Pick your biome</label>${themePicker(d.theme)}`;
+ if(st===1)body=`<h2>Your subjects</h2><p>Paste anything: subjects, chapters, syllabus, marks, books. Or let the Copper Helper suggest subjects from your aim.</p>
+  <textarea id="wR" placeholder="Physics (68%): Kinematics, Laws of Motion, Work and Energy&#10;Maths: Limits, Derivatives, Integrals&#10;Goal: 90% in boards by 2027-03-01">${esc(d.raw)}</textarea>
+  <div class="row" style="margin-top:10px"><button class="btn cu" data-act="wai">${IC.golem(18)} Sort it with the Helper</button><button class="btn" data-act="wraw">Read as written</button><button class="btn gold" data-act="wsuggest">${IC.golem(18)} I don't know - suggest subjects</button></div>
+  <div id="wMsg" class="small" style="margin-top:8px">${d.subjects.length?esc(d.subjects.length+' subjects, '+d.subjects.reduce((a,s)=>a+s.topics.length,0)+' topics ready.'):''}</div>
+  ${d.subjects.length?`<div class="panel dark" style="margin-top:10px">${d.subjects.map(s=>`<div style="margin-bottom:6px"><b>${esc(s.name)}</b>${s.score!=null?' · '+s.score+'%':''}<div class="small muted">${esc(s.topics.map(t=>t.name).join(', ')||'no topics')}</div></div>`).join('')}</div>`:''}`;
+ if(st===2)body=`<h2>Your goals</h2><p>What are you aiming for, and by when? Deadlines make the planner push that subject harder.</p>
+  ${d.goals.length?`<table class="tbl">${d.goals.map((g,i)=>`<tr><td>${esc(g.text)}</td><td>${esc(d.subjects.find(s=>s.id===g.subj)?.name||'-')}</td><td class="n">${esc(g.deadline||'-')}</td><td><button class="btn sm" data-act="wdelg" data-i="${i}">X</button></td></tr>`).join('')}</table>`:''}
+  <label for="wgT">Goal</label><input id="wgT" placeholder="e.g. German B1 certificate">
+  <div class="grid2"><div><label for="wgS">Subject</label><select id="wgS"><option value="">(general)</option>${d.subjects.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div><div><label for="wgD">Deadline</label><input id="wgD" type="date"></div></div>
+  <div style="margin-top:10px"><button class="btn" data-act="waddg">+ Add goal</button></div>`;
+ if(st===3)body=`<h2>Your day</h2><div class="grid2"><div><label for="wH">Hours you can study per day</label><input id="wH" type="number" min="0.5" max="14" step="0.5" value="${d.hours}"></div><div><label for="wB">Preferred session length</label><select id="wB">${[25,30,45,50,60,90].map(m=>`<option ${+d.block===m?'selected':''}>${m}</option>`).join('')}</select></div></div>
+  <div class="grid2"><div><label for="wS">Earliest you study</label><select id="wS">${hourOpts(d.start)}</select></div><div><label for="wE">Latest you study</label><select id="wE">${hourOpts(d.end)}</select></div></div>
+  <label for="wP">When do you feel sharpest?</label><select id="wP">${['morning','afternoon','night'].map(x=>`<option ${d.pref===x?'selected':''}>${x}</option>`).join('')}</select><p class="small">Real focus data replaces this guess after a few sessions.</p>`;
+ if(st===4)body=`<h2>Your sources</h2><p>Where do you study each subject from? Book first, then questions, then videos. Leave blank and the Library will suggest some.</p>
+  ${d.subjects.map(s=>`<label for="wsr_${s.id}">${esc(s.name)}</label><input id="wsr_${s.id}" value="${esc(s.sources||'')}" placeholder="e.g. Textbook, past papers, a lecture channel">`).join('')||'<p>No subjects yet - you can add them later or ask the Copper Helper.</p>'}`;
+ $('#view').innerHTML=`<div class="panel" style="max-width:780px;margin:20px auto">${bar}${body}
+  <div class="row between" style="margin-top:18px">${st?'<button class="btn" data-act="wback">Back</button>':'<span></span>'}<button class="btn go" data-act="wnext">${st===N-1?'Start game':'Next'}</button></div></div>`;
+ const f=$('#view input,#view textarea');f&&f.focus();
+}
+function wizRead(){const d=W.d,st=W.step;
+ if(st===0){d.name=$('#wN').value.trim();d.course=$('#wC').value.trim();d.intent=$('#wI').value.trim()}
+ if(st===1)d.raw=$('#wR').value;
+ if(st===3){d.hours=+$('#wH').value||4;d.block=+$('#wB').value;d.start=+$('#wS').value;d.end=+$('#wE').value;d.pref=$('#wP').value}
+ if(st===4)d.subjects.forEach(s=>{const e=$('#wsr_'+s.id);if(e)s.sources=e.value.trim()})}
+function wizLoad(data){W.d.goals=W.d.goals.filter(g=>!g.fromParse);mergeData(data,W.d)}
+async function wizSuggest(){
+ wizRead();const msg=$('#wMsg');const sample=await getSample();
+ if(!sample){msg.textContent='The Helper needs FlowCraft opened inside Claude (claude.ai). Paste your subjects instead.';return}
+ if(!W.d.intent&&!W.d.course){msg.textContent='Go back one step and write what you\'re trying to achieve.';return}
+ msg.textContent='The Copper Helper is thinking about your path…';
+ try{const r=await sample(`A student needs subjects to study. Studying now: ${W.d.course||'?'}. Aim: ${W.d.intent||'?'}. Today ${dkey()}.\nUse search_catalog to ground choices in real resources. Reply ONLY JSON: {"subjects":[{"name":"","priority":"high|medium|low","topics":["8-12 topics in study order"],"sources":"2-3 resource titles, comma separated"}],"goals":[{"text":"","subject":"","deadline":"YYYY-MM-DD"}]} with 3-6 subjects.`,{modelTier:'default',tools:[T_SEARCH]});
+  W.d.subjects=[];wizLoad(jsonFrom(r&&r.text));renderWizard()}
+ catch(e){msg.textContent='The Helper couldn\'t answer right now. Paste your subjects instead.'}
+}
+function finishWizard(){wizRead();S=newState(W.d);W=null;evt('World created - starter kit: 3 diamonds, 2 copper, 2 lapis, 1 straw bed');VIEW='flow';applyTheme();rollDay();save(true);render();
+ chest([['dia',3],['cu',2],['lap',2],['bed',1]],'Welcome, '+S.profile.name+'. Tell Flow what you want to do today.','Starter chest')}
+
+/* ================= events ================= */
+document.addEventListener('click',async e=>{
+ const v=e.target.closest('[data-view]');if(v&&S){VIEW=v.dataset.view;beep(SND.click);closeModal();render();window.scrollTo(0,0);return}
+ const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,id=b.dataset.id;
+ if(a==='ovclose'){if(e.target===b)closeModal();return}
+ switch(a){
+  case 'close':closeModal();break;
+  case 'confok':closeModal();confirmCb&&confirmCb();confirmCb=null;break;
+  case 'start':startTask(id);break;
+  case 'pause':pauseTask();break;
+  case 'stop':stopTask(id);break;
+  case 'finish':openFinish(id);break;
+  case 'complete':completeTask(id);break;
+  case 'later':laterTask(id);break;
+  case 'skip':skipTask(id);break;
+  case 'bed':useBed();break;
+  case 'brk':startBreak(+b.dataset.m||5);break;
+  case 'endbrk':S.brk=null;save();render();break;
+  case 'delq':{const [t,k]=findTask(id);if(S.active&&S.active.id===id)closeActive();S.days[k].tasks=S.days[k].tasks.filter(x=>x!==t);save();render();break}
+  case 'tip':askTip(id);break;
+  case 'replan':replan();break;
+  case 'addq':addQuest(b.dataset.date);break;
+  case 'addqok':addQuestOk();break;
+  case 'opensub':openSub(id);break;
+  case 'newsub':{const s={id:uid(),name:'New subject',score:null,sources:'',topics:[]};S.subjects.push(s);save();render();openSub(s.id);break}
+  case 'savesub':saveSubFields(id);save();closeModal();render();break;
+  case 'addtop':{saveSubFields(id);const s=subById(id);$('#ssT').value.split(',').map(x=>x.trim()).filter(Boolean).forEach(n=>s.topics.push(newTopic(n)));save();openSub(id);break}
+  case 'deltop':{saveSubFields(b.dataset.s);const s=subById(b.dataset.s);s.topics=s.topics.filter(t=>t.id!==id);save();openSub(s.id);break}
+  case 'delsub':confirmBox('Delete subject?','Its topics and progress are removed. Logged time stays in stats.','Delete',()=>{S.subjects=S.subjects.filter(s=>s.id!==id);const t=today();if(t)t.tasks=t.tasks.filter(x=>x.sub!==id||x.status==='done');save();render()});break;
+  case 'addgoal':{const t=$('#gT').value.trim();if(!t)return;S.goals.push({id:uid(),text:t,subj:$('#gS').value,deadline:$('#gD').value,done:false});save();render();break}
+  case 'delgoal':S.goals=S.goals.filter(g=>g.id!==id);save();render();break;
+  case 'impraw':{const t=$('#impT').value;if(!t.trim())return;const m=mergeData(parseRaw(t));save();render();toast('Imported',m);break}
+  case 'impai':{const t=$('#impT').value;if(!t.trim())return;$('#impMsg').textContent='The Helper is sorting it…';try{const m=mergeData(await aiParse(t));save();render();toast('Imported',m)}catch(err){$('#impMsg').textContent='The Helper could not sort it here - try "Import as written".'}break}
+  case 'saveintent':S.intent=$('#intent').value.trim();save();toast('Aim saved','The Helper will use it everywhere.','',IC.golem(28));break;
+  case 'pathfind':pathfind();break;
+  case 'planadd':planAdd(+b.dataset.i);break;
+  case 'msadd':{const m=S.plan.milestones[+b.dataset.i];if(m){S.goals.push({id:uid(),text:m.text,subj:'',deadline:/^\d{4}-\d{2}-\d{2}$/.test(m.by||'')?m.by:'',done:false});save();toast('Goal added',m.text)}break}
+  case 'chat':{const i=$('#chatIn');const t=i.value;i.value='';chatSend(t);break}
+  case 'chatq':chatSend(b.dataset.q);break;
+  case 'rank':rankLib();break;
+  case 'calread':readCalendar();break;
+  case 'aisave':{const u=$('#aiU').value.trim(),p=$('#aiP').value;if(u&&!/^https:\/\//.test(u)){$('#aiMsg').textContent='The URL must start with https://';return}try{if(u)localStorage.setItem(AI_LS,JSON.stringify({url:u,pass:p}));else localStorage.removeItem(AI_LS)}catch(err){}$('#aiMsg').textContent='Saved. Press Test connection.';break}
+  case 'aiclear':try{localStorage.removeItem(AI_LS)}catch(err){}render();break;
+  case 'aitest':{const m=$('#aiMsg');const fs=freeSample();if(!fs){m.textContent='Save a Worker URL first.';return}m.textContent='Testing…';try{const r=await fs('Reply with exactly: FlowCraft AI is online.');m.textContent='✓ '+String(r.text||'').slice(0,120)}catch(err){m.textContent='✗ '+(err.code==='rate_limited'?'Free limit reached - wait a minute.':err.code==='http_401'?'Wrong passcode.':err.code==='http_403'?'This site isn\'t in ALLOWED_ORIGINS on the Worker.':(err.message||err.code||'Failed'))}break}
+  case 'fsend':{const i=$('#fin');const t=i.value;i.value='';flowSend(t);break}
+  case 'fquick':{const i=$('#fin');const t=i.value;i.value='';flowSend(t,true);break}
+  case 'fchip':flowSend(b.dataset.q);break;
+  case 'fundo':undoFlow(+b.dataset.i);break;
+  case 'mic':micClick();break;
+  case 'editt':editTask(id);break;
+  case 'etsave':{try{moveTask(id,$('#etD').value,$('#etH').value||undefined,+$('#etM').value,$('#etT').value.trim());if(!$('#etH').value){const [t,k]=findTask(id);if(t&&t.slot!=null&&$('#etH').value===''){}}}catch(err){}closeModal();render();break}
+  case 'etstart':closeModal();startTask(id);break;
+  case 'etdel':{const [t,k]=findTask(id);if(t){if(S.active&&S.active.id===id)closeActive();S.days[k].tasks=S.days[k].tasks.filter(x=>x!==t);save()}closeModal();render();break}
+  case 'calpush':pushCalendar();break;
+  case 'nlog':saveLog();break;
+  case 'nsearch':searchNotion();break;
+  case 'nimp':importNotion(+b.dataset.i,b.dataset.as);break;
+  case 'nmem':pullNotionMemory();break;
+  case 'lessons':learnLessons();break;
+  case 'tweak':applyTweak(+b.dataset.i);break;
+  case 'memimp':importPasted();break;
+  case 'pvsave':savePreview();break;
+  case 'pvcancel':HUB.preview=null;render();break;
+  case 'memadd':{const t=$('#mt').value.trim();if(!t)return;addMem(t,$('#mk').value,'manual');save();render();break}
+  case 'memf':HUB.filter=b.dataset.k;render();break;
+  case 'memdel':S.mem=S.mem.filter(m=>m.id!==id);save();render();break;
+  case 'up':{const k=b.dataset.k,a2=S.armor[k],nt=a2.t+1;if(nt>=TIERS.length)return;if(nt===1){if(S.inv.cu<UPC[1])return;S.inv.cu-=UPC[1]}else{if(S.inv.dia<UPC[nt]||(nt===5&&S.inv.ingot<1))return;S.inv.dia-=UPC[nt];if(nt===5)S.inv.ingot--}
+   a2.t=nt;const nm=PIECES.find(p=>p[0]===k)[1];evt(`Crafted ${TIERS[nt][0]} ${nm}`);beep(SND.up);save();render();toast('Crafted!',`${TIERS[nt][0]} ${nm} equipped.`);break}
+  case 'ench':{const k=b.dataset.k,en=b.dataset.e,a2=S.armor[k],nx=a2[en]+1;if(nx>3||lvl()<nx||S.inv.lap<nx)return;S.inv.xp-=nx*60;S.inv.lap-=nx;a2[en]=nx;const nm=(en==='prot'?'Protection ':'Fortune ')+['','I','II','III'][nx];evt(`Enchanted ${PIECES.find(p=>p[0]===k)[1]} with ${nm}`);beep(SND.up);save();render();toast('Enchanted!',nm,'advt');break}
+  case 'trade':{const t=b.dataset.t,I=S.inv;if(t==='lap'&&I.eme>=1){I.eme--;I.lap+=3}else if(t==='eme'&&I.dia>=6){I.dia-=6;I.eme++}else if(t==='cu'&&I.dia>=1){I.dia--;I.cu+=3}else if(t==='bed'&&I.eme>=2){I.eme-=2;I.bed++}else if(t==='ingot'&&I.eme>=3){I.eme-=3;I.ingot++}else return;beep(SND.chest);save();render();break}
+  case 'sage':askSage();break;
+  case 'theme':{const t=b.dataset.t;if(W&&!S){W.d.theme=t;wizRead();const tmp=S;S={theme:t};applyTheme();S=tmp;renderWizard()}else{S.theme=t;applyTheme();save();render()}break}
+  case 'saveprof':{const P=S.profile;P.name=$('#pN').value.trim()||P.name;P.course=$('#pC').value.trim();P.hours=clamp(+$('#pH').value||4,.5,14);P.block=+$('#pB').value;P.start=+$('#pS').value;P.end=+$('#pE').value;P.pref=$('#pP').value;P.sound=$('#pSnd').checked;S.showLeather=$('#pLea').checked;save();render();toast('Saved','Re-roll the plan to apply new hours today.');break}
+  case 'export':{const j=JSON.stringify(S);try{await navigator.clipboard.writeText(j);toast('Copied','Backup is on your clipboard.')}catch(err){modal(`<div class="panel modal"><h2>Backup</h2><p>Select all and copy:</p><textarea readonly style="min-height:240px">${esc(j)}</textarea><button class="btn" data-act="close" style="margin-top:10px">Done</button></div>`)}break}
+  case 'import':modal(`<div class="panel modal"><h2>Restore backup</h2><p>Paste a backup. It replaces your current world.</p><textarea id="bk"></textarea><div class="row" style="margin-top:10px"><button class="btn red" data-act="importok">Restore</button><button class="btn" data-act="close">Cancel</button></div></div>`);break;
+  case 'importok':try{const o=migrate(JSON.parse($('#bk').value));if(!o||!o.armor)throw 0;S=o;applyTheme();save(true);closeModal();render();toast('Restored','Welcome back.')}catch(err){toast('Not a backup','That text is not a FlowCraft backup.')}break;
+  case 'reset':confirmBox('Reset world?','Everything - subjects, history, armor - is erased. This cannot be undone.','Erase everything',()=>{S=null;try{localStorage.removeItem(LSK)}catch(err){}if(REF)saveChain=saveChain.then(()=>REF.set({json:''})).catch(()=>{});W=null;CHAT=[];render()});break;
+  case 'goaldone':{const g=S.goals.find(x=>x.id===id);g.done=b.checked;save();render();break}
+  case 'wnext':wizRead();if(W.step===0&&!W.d.name){$('#wN').focus();return}
+   if(W.step===1&&W.d.raw.trim()&&!W.d.subjects.length)wizLoad(parseRaw(W.d.raw));
+   if(W.step===4){finishWizard();return}W.step++;renderWizard();window.scrollTo(0,0);break;
+  case 'wback':wizRead();W.step--;renderWizard();break;
+  case 'wraw':wizRead();W.d.subjects=[];wizLoad(parseRaw(W.d.raw));renderWizard();break;
+  case 'wsuggest':wizSuggest();break;
+  case 'wai':{wizRead();if(!W.d.raw.trim())return;$('#wMsg').textContent='The Helper is sorting your data…';try{const data=await aiParse(W.d.raw);W.d.subjects=[];wizLoad(data);renderWizard()}catch(err){$('#wMsg').textContent='The Helper is not reachable here - used the simple reader instead.';W.d.subjects=[];wizLoad(parseRaw(W.d.raw));setTimeout(renderWizard,1200)}break}
+  case 'waddg':{const t=$('#wgT').value.trim();if(!t)return;W.d.goals.push({id:uid(),text:t,subj:$('#wgS').value,deadline:$('#wgD').value,done:false});renderWizard();break}
+  case 'wdelg':W.d.goals.splice(+b.dataset.i,1);renderWizard();break;
+ }
+});
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.dataset.act==='tstat'){const s=subById(t.dataset.s),tp=topById(s,t.dataset.id);tp.status=t.value;if(tp.status!=='new'&&!tp.next)tp.next=addDays(dkey(),1);if(tp.status==='new'){tp.next=null;tp.reviews=0}save();return}
+ if(t.dataset.act==='skin'){S.skin=t.value;save();render();return}
+ if(t.dataset.act==='libadd'&&t.value){const c=catById(t.dataset.id);let s=t.value==='__new'?null:subById(t.value);if(!s){s={id:uid(),name:c.subject,score:null,sources:'',topics:[]};const ex=S.subjects.find(x=>x.name===c.subject);if(ex)s=ex;else S.subjects.push(s)}
+  if(!(s.sources||'').includes(c.title))s.sources=[s.sources,c.title].filter(Boolean).join(', ');save();toast('Added to chest',`${c.title} → ${s.name}`,'',IC.chest(28));render();return}
+ if(['lq','ls','lt','lc','lo'].includes(t.id)){LIBF={q:$('#lq').value,subj:$('#ls').value,type:$('#lt').value,cost:$('#lc').value,sort:$('#lo').value};render()}
+});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Enter'&&document.activeElement&&document.activeElement.id==='chatIn'){const i=$('#chatIn');const t=i.value;i.value='';chatSend(t);return}
+ if(e.key==='Enter'&&document.activeElement&&document.activeElement.id==='lq'){LIBF.q=$('#lq').value;render();setTimeout(()=>{const q=$('#lq');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}},0);return}
+ if(e.key==='Enter'&&!e.shiftKey&&document.activeElement&&document.activeElement.id==='fin'){e.preventDefault();const i=$('#fin');const t=i.value;i.value='';flowSend(t,VIEW!=='flow');return}
+ if(e.key==='Enter'&&document.activeElement&&document.activeElement.id==='nq'){searchNotion();return}
+ if(e.key==='Escape'&&$('#modal').innerHTML){closeModal();return}
+ if(!S||$('#modal').innerHTML||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
+ const n=+e.key;if(n>=1&&n<=VIEWS.length){VIEW=VIEWS[n-1][0];render()}
+});
+// pixel tooltips
+let tipEl=null;
+document.addEventListener('mouseover',e=>{const t=e.target.closest('[data-tip]');if(!t){if(tipEl){tipEl.remove();tipEl=null}return}if(!tipEl){tipEl=document.createElement('div');tipEl.className='tip';document.body.appendChild(tipEl)}tipEl.textContent=t.dataset.tip});
+document.addEventListener('mousemove',e=>{if(tipEl){tipEl.style.left=Math.min(innerWidth-290,e.clientX+14)+'px';tipEl.style.top=(e.clientY+16)+'px'}});
+
+/* ================= ticker ================= */
+let lastDay=dkey(),lastSky=0;
+setInterval(()=>{
+ if(Date.now()-lastSky>60000){lastSky=Date.now();applySky()}
+ if(!S)return;
+ if(S.active){const [t]=findTask(S.active.id);const el=$('#tbig');if(el&&t){const sp=spentOf(t);el.textContent=fmtDur(sp);const p=$('#tprog');if(p)p.style.width=clamp(sp/6e4/t.mins*100,0,100)+'%'}document.title=(t?fmtDur(spentOf(t))+' · ':'')+'FlowCraft'}else document.title='FlowCraft';
+ if(S.brk){const left=S.brk.until-Date.now();const el=$('#bbig');if(left<=0){S.brk=null;save();beep(SND.start);toast('Break over','Back to the quests!','',IC.cushion(28));if(VIEW==='quests')render()}else if(el)el.textContent=fmtDur(left)}
+ if(dkey()!==lastDay){lastDay=dkey();rollDay();render();return}
+ const d=today();if(!d)return;const nm=nowMin();
+ d.tasks.forEach(t=>{if(t.status==='todo'&&t.slot!=null&&nm>=t.slot&&nm<t.slot+15&&!t.reminded&&!S.active){t.reminded=true;beep(SND.start);toast('Quest time!',`${t.title} - ${t.mins} min. Press Start when you begin.`,'',IC.bell?IC.bell(28):'');save()}});
+},1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S&&S.active)render()});
+
+/* ================= boot ================= */
+applyTheme();initDict();
+(async()=>{try{S=migrate(await loadStore())}catch(e){S=null}if(S){applyTheme();rollDay()}render()})();
+}
+</script></body></html>
