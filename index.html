@@ -940,7 +940,7 @@ function replan(){const k=dkey(),day=S.days[k];const keep=day?day.tasks.filter(t
 /* ================= Claude access ================= */
 const AI_LS='flowcraft_ai';
 function aiCfg(){try{return JSON.parse(localStorage.getItem(AI_LS)||'null')}catch(e){return null}}
-function freeSample(){const c=aiCfg();if(!c||!c.url)return null;
+function freeSample(){let c=aiCfg();if(!window.claude&&location.protocol==='https:')c=Object.assign({url:'/api/ai',pass:''},c||{});if(c&&!c.url&&!window.claude)c.url='/api/ai';if(!c||!c.url)return null;
  const call=async body=>{let r;try{r=await fetch(c.url,{method:'POST',headers:{'content-type':'application/json','x-flowcraft-pass':c.pass||''},body:JSON.stringify(body)})}catch(e){throw {code:'network',message:'Could not reach your AI proxy'}}
   if(r.status===429)throw {code:'rate_limited'};if(!r.ok){let m='';try{m=(await r.json()).error}catch(e){}throw {code:'http_'+r.status,message:typeof m==='string'?m:JSON.stringify(m)}}return r.json()};
  return async(input,opts={})=>{const msgs=typeof input==='string'?[{role:'user',content:input}]:input.map(m=>({role:m.role,content:String(m.content||'')}));
@@ -1435,8 +1435,8 @@ function vSettings(){const P=S.profile;
  <label class="row" style="gap:8px"><input type="checkbox" id="pSnd" ${P.sound!==false?'checked':''}> Sound effects</label>
  <label class="row" style="gap:8px"><input type="checkbox" id="pLea" ${S.showLeather?'checked':''}> Show leather armor on character</label>
  <div style="margin-top:14px"><button class="btn go" data-act="saveprof">Save</button></div></div></div>
- <div class="stack"><div class="panel ench"><h2>AI connection (your own website)</h2><p class="small">Inside Claude this isn't needed. On your deployed site, paste your free Groq proxy (Cloudflare Worker) here to switch on Flow AI, the Copper Helper and the Sage. Saved only in this browser.</p>
- <label for="aiU">Worker URL</label><input id="aiU" placeholder="https://flowcraft-ai.yourname.workers.dev" value="${esc((aiCfg()||{}).url||'')}">
+ <div class="stack"><div class="panel ench"><h2>AI connection (your own website)</h2><p class="small">Inside Claude this isn't needed. On Vercel the free AI runs at <b>/api/ai</b> automatically - just enter the passcode you set as APP_PASSCODE. Only fill in the URL if your AI proxy lives elsewhere (e.g. a Cloudflare Worker). Saved only in this browser.</p>
+ <label for="aiU">Proxy URL (leave empty on Vercel)</label><input id="aiU" placeholder="/api/ai" value="${esc((aiCfg()||{}).url||'')}">
  <label for="aiP">Passcode</label><input id="aiP" type="password" value="${esc((aiCfg()||{}).pass||'')}">
  <div class="row" style="margin-top:10px"><button class="btn go" data-act="aisave">Save</button><button class="btn" data-act="aitest">Test connection</button><button class="btn sm" data-act="aiclear">Remove</button></div><div id="aiMsg" class="small" style="margin-top:6px"></div></div>
  <div class="panel stone"><h2>Backup</h2><p class="small">Your save syncs to your Claude account on this page. You can also copy a backup.</p><div class="row"><button class="btn" data-act="export">Copy backup</button><button class="btn" data-act="import">Restore backup</button></div></div>
@@ -1531,9 +1531,9 @@ document.addEventListener('click',async e=>{
   case 'chatq':chatSend(b.dataset.q);break;
   case 'rank':rankLib();break;
   case 'calread':readCalendar();break;
-  case 'aisave':{const u=$('#aiU').value.trim(),p=$('#aiP').value;if(u&&!/^https:\/\//.test(u)){$('#aiMsg').textContent='The URL must start with https://';return}try{if(u)localStorage.setItem(AI_LS,JSON.stringify({url:u,pass:p}));else localStorage.removeItem(AI_LS)}catch(err){}$('#aiMsg').textContent='Saved. Press Test connection.';break}
+  case 'aisave':{const u=$('#aiU').value.trim(),p=$('#aiP').value;if(u&&!/^(https:\/\/|\/)/.test(u)){$('#aiMsg').textContent='The URL must start with https:// or /';return}try{localStorage.setItem(AI_LS,JSON.stringify({url:u,pass:p}))}catch(err){}$('#aiMsg').textContent='Saved. Press Test connection.';break}
   case 'aiclear':try{localStorage.removeItem(AI_LS)}catch(err){}render();break;
-  case 'aitest':{const m=$('#aiMsg');const fs=freeSample();if(!fs){m.textContent='Save a Worker URL first.';return}m.textContent='Testing…';try{const r=await fs('Reply with exactly: FlowCraft AI is online.');m.textContent='✓ '+String(r.text||'').slice(0,120)}catch(err){m.textContent='✗ '+(err.code==='rate_limited'?'Free limit reached - wait a minute.':err.code==='http_401'?'Wrong passcode.':err.code==='http_403'?'This site isn\'t in ALLOWED_ORIGINS on the Worker.':(err.message||err.code||'Failed'))}break}
+  case 'aitest':{const m=$('#aiMsg');const fs=freeSample();if(!fs){m.textContent='Open FlowCraft on your deployed https site, or enter a proxy URL.';return}m.textContent='Testing…';try{const r=await fs('Reply with exactly: FlowCraft AI is online.');m.textContent='✓ '+String(r.text||'').slice(0,120)}catch(err){m.textContent='✗ '+(err.code==='rate_limited'?'Free limit reached - wait a minute.':err.code==='http_401'?'Wrong passcode.':err.code==='http_404'?'No AI proxy found at that address - is api/ai.js deployed?':err.code==='http_500'?(err.message||'Server setup problem - check GROQ_API_KEY.'):err.code==='http_403'?'This site isn\'t allowed by the proxy.':(err.message||err.code||'Failed'))}break}
   case 'fsend':{const i=$('#fin');const t=i.value;i.value='';flowSend(t);break}
   case 'fquick':{const i=$('#fin');const t=i.value;i.value='';flowSend(t,true);break}
   case 'fchip':flowSend(b.dataset.q);break;

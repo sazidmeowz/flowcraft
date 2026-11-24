@@ -14,13 +14,14 @@ A blocky, survival-game-style planner for study and work. Tell **Flow** what you
 - **Stats.** A focus heat-map by hour, a 14-day chart, time per subject, time-estimate accuracy and 20 advancements.
 - **Seven biomes and a real-time sky.** Works on phones held upright or sideways.
 
-Everything is one self-contained file: `index.html`. There's no build step. `worker.js` is the optional free AI proxy.
+Everything is one self-contained file: `index.html`. There's no build step. `api/ai.js` is the free AI proxy for Vercel; `worker.js` is a Cloudflare alternative.
 
-## Deploy
+## Deploy on Vercel (free)
 
-**GitHub Pages:** go to Settings → Pages, set Source to *Deploy from a branch*, then pick branch `main` and folder `/ (root)`. The site goes live at `https://<user>.github.io/flowcraft/`.
-
-The same file works on Netlify, Vercel or Cloudflare Pages too. Drop in the repo; no build command is needed.
+1. Sign in at **vercel.com** with your GitHub account (Hobby plan, free).
+2. Click **Add New… → Project** and import **flowcraft**.
+3. Set Framework Preset to **Other**. Leave the build command and output directory empty. Click **Deploy**.
+4. Your site is live at `https://flowcraft-<something>.vercel.app`. Every push to `main` redeploys it automatically.
 
 ## Running outside Claude
 
@@ -31,23 +32,24 @@ FlowCraft was built as a Claude artifact. Some features use services that only e
 | Quests, timers, planner, armor, stats, chests | ✅ | ✅ |
 | Saving progress | Synced to your Claude account | Saved in this browser only (`localStorage`). Use *Settings → Copy backup* to move devices |
 | Voice input | ✅ | ✅ in Chrome and Edge (browser speech recognition) |
-| Flow AI, Copper Helper, Sage, lessons | ✅ (Claude) | ✅ free via Groq + Cloudflare Worker (setup below). Without it, the quick-add parser still works |
+| Flow AI, Copper Helper, Sage, lessons | ✅ (Claude) | ✅ free via Groq through `api/ai.js` on Vercel (setup below). Without it, the quick-add parser still works |
 | Notion and Notion Calendar | ✅ | ❌ (needs a backend with Notion OAuth) |
 
-### Free AI on your own site (Groq + Cloudflare Worker)
+### Free AI on Vercel (Groq)
 
-The deployed site uses **Groq's free API** through a **free Cloudflare Worker** that keeps your key secret. Groq's free tier needs no card. When you hit the free limit it just pauses (error 429); it never charges you.
+`api/ai.js` is a Vercel Function that keeps your Groq key secret and forwards FlowCraft's AI requests to **Groq's free API**. Groq's free tier needs no card. When you hit the free limit it just pauses (error 429); it never charges you.
 
 1. **Get a free Groq key.** Sign up at console.groq.com, open **API Keys**, click **Create API Key** and copy it.
-2. **Create the Worker.** Sign up at cloudflare.com (free plan). Go to **Workers & Pages → Create → Create Worker**, name it `flowcraft-ai`, click **Deploy**, then **Edit code**. Replace everything with [`worker.js`](worker.js) from this repo and click **Deploy**.
-3. **Add the secrets.** In the Worker, open **Settings → Variables and Secrets** and add:
-   - `GROQ_API_KEY`, type **Secret**: your Groq key
-   - `APP_PASSCODE`, type **Secret**: any password you make up
-   - (optional) `ALLOWED_ORIGINS`, type Text: your site address, by default `https://sazidmeowz.github.io`
-4. **Copy the Worker URL.** It looks like `https://flowcraft-ai.<your-subdomain>.workers.dev`.
-5. **Connect FlowCraft.** Open your deployed site → **Settings → AI connection**. Paste the URL and passcode, click **Save**, then **Test connection**. You should see "✓ FlowCraft AI is online."
+2. **Add environment variables.** In Vercel, open your project → **Settings → Environment Variables** and add:
+   - `GROQ_API_KEY`: your Groq key
+   - `APP_PASSCODE`: any password you make up. This stops strangers who find your site from using your free quota.
+   - (optional) `MODEL`: default `openai/gpt-oss-120b`
+3. **Redeploy.** Go to **Deployments → ⋯ on the latest one → Redeploy**. Environment variables only apply to new deployments.
+4. **Connect.** Open your site → **Settings → AI connection**. Leave the URL empty, type your passcode, click **Save**, then **Test connection**. You should see "✓ FlowCraft AI is online."
 
-Flow chat, the Copper Helper, the Sage, lessons and the memory filter now run on Groq (`openai/gpt-oss-120b` by default; change it with a `MODEL` variable). Never put the Groq key in `index.html`. It belongs only in the Worker secret.
+Never put the Groq key in `index.html`. It belongs only in Vercel's environment variables.
+
+*Alternative:* `worker.js` does the same job as a Cloudflare Worker, if you host the site somewhere without functions (for example GitHub Pages). Paste the Worker URL into Settings → AI connection.
 
 ## Data and privacy
 
